@@ -131,10 +131,19 @@ const BIN_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
 let articles = [], nextId = 1, admin = false;
 let page = 'front', openId = null;
 let showLogin = false, loginErr = '';
+let showRegister = false, regUser = '', regPass = '', regErr = '';
 let showEditor = false;
 let confirmPending = null;
 let tapCount = 0, tapTimer = null;
 
+// Käyttäjät tallennetaan localStorageen — avain on julkinen joten salasanat ovat näkyvissä,
+// mutta admin-oikeus tarkistetaan aina ADMIN_USER/ADMIN_PASS vastaan.
+function getUsers() {
+  try { return JSON.parse(localStorage.getItem('martsa_users') || '[]'); } catch(e) { return []; }
+}
+function saveUsers(users) {
+  try { localStorage.setItem('martsa_users', JSON.stringify(users)); } catch(e) {}
+}
 function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
