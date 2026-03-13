@@ -169,10 +169,10 @@ function render() {
       </div>
     </div>` : '';
 
-  const loginHtml = showLogin ? `
+ const loginHtml = showLogin ? `
     <div class="modal-bg">
       <div class="modal">
-        <h2>Hallintamoodi</h2>
+        <h2>Kirjaudu sisään</h2>
         <p>Kirjaudu muokataksesi lehteä</p>
         <label>Käyttäjätunnus</label>
         <input id="lu" type="text" placeholder="käyttäjätunnus">
@@ -183,6 +183,29 @@ function render() {
           <button class="btn-primary" id="lbtn">Kirjaudu sisään</button>
           <button class="btn-secondary" id="lcbtn">Peruuta</button>
         </div>
+        <p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">
+          Ei tiliä? <span id="go-reg" style="color:var(--red);cursor:pointer;text-decoration:underline">Luo tunnus</span>
+        </p>
+      </div>
+    </div>` : showRegister ? `
+    <div class="modal-bg">
+      <div class="modal">
+        <h2>Luo tunnus</h2>
+        <p>Luo oma käyttäjätunnus Martsa Weekly Newsiin</p>
+        <label>Käyttäjätunnus</label>
+        <input id="ru" type="text" placeholder="käyttäjätunnus">
+        <label>Salasana</label>
+        <input id="rp" type="password" placeholder="••••••••">
+        <label>Salasana uudelleen</label>
+        <input id="rp2" type="password" placeholder="••••••••">
+        <div class="modal-err">${esc(regErr)}</div>
+        <div class="modal-btns">
+          <button class="btn-primary" id="rbtn">Luo tunnus</button>
+          <button class="btn-secondary" id="rcbtn">Peruuta</button>
+        </div>
+        <p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">
+          Onko jo tunnus? <span id="go-login" style="color:var(--red);cursor:pointer;text-decoration:underline">Kirjaudu</span>
+        </p>
       </div>
     </div>` : '';
 
@@ -328,6 +351,16 @@ function attachEvents() {
   if (lcbtn) lcbtn.addEventListener('click', () => { showLogin = false; render(); });
   if (lu)    lu.addEventListener('keydown', e => { if (e.key === 'Enter' && lp) lp.focus(); });
   if (lp)    lp.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  const goReg = document.getElementById('go-reg');
+  if (goReg) goReg.addEventListener('click', switchToRegister);
+  const goLogin = document.getElementById('go-login');
+  if (goLogin) goLogin.addEventListener('click', switchToLogin);
+  const rbtn = document.getElementById('rbtn');
+  const rcbtn = document.getElementById('rcbtn');
+  if (rbtn) rbtn.addEventListener('click', doRegister);
+  if (rcbtn) rcbtn.addEventListener('click', () => { showRegister = false; render(); });
+  const rp2 = document.getElementById('rp2');
+  if (rp2) rp2.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
 
   // Admin exit
   const exitBtn = document.getElementById('exit-admin-btn');
@@ -404,8 +437,37 @@ function attachEvents() {
 function doLogin() {
   const u = (document.getElementById('lu').value || '').trim();
   const p = (document.getElementById('lp').value || '');
-  if (u === ADMIN_USER && p === ADMIN_PASS) { showLogin = false; admin = true; render(); }
-  else { loginErr = 'Väärä käyttäjätunnus tai salasana.'; render(); }
+  // Tarkista ensin admin
+  if (u === ADMIN_USER && p === ADMIN_PASS) { showLogin = false; admin = true; render(); return; }
+  // Tarkista tavalliset käyttäjät
+  const users = getUsers();
+  const match = users.find(x => x.user === u && x.pass === p);
+  if (match) { showLogin = false; render(); return; }
+  loginErr = 'Väärä käyttäjätunnus tai salasana.'; render();
+}
+
+function doRegister() {
+  const u = (document.getElementById('ru').value || '').trim();
+  const p = (document.getElementById('rp').value || '');
+  const p2 = (document.getElementById('rp2').value || '');
+  if (!u) { regErr = 'Kirjoita käyttäjätunnus.'; render(); return; }
+  if (u === ADMIN_USER) { regErr = 'Tämä käyttäjätunnus ei ole saatavilla.'; render(); return; }
+  if (p.length < 4) { regErr = 'Salasanan pitää olla vähintään 4 merkkiä.'; render(); return; }
+  if (p !== p2) { regErr = 'Salasanat eivät täsmää.'; render(); return; }
+  const users = getUsers();
+  if (users.find(x => x.user === u)) { regErr = 'Käyttäjätunnus on jo käytössä.'; render(); return; }
+  users.push({ user: u, pass: p });
+  saveUsers(users);
+  showRegister = false; showLogin = false; render();
+}
+
+function switchToRegister() {
+  showLogin = false; showRegister = true; regUser = ''; regPass = ''; regErr = ''; render();
+  setTimeout(() => { const el = document.getElementById('ru'); if (el) el.focus(); }, 30);
+}
+function switchToLogin() {
+  showRegister = false; showLogin = true; loginErr = ''; render();
+  setTimeout(() => { const el = document.getElementById('lu'); if (el) el.focus(); }, 30);
 }
 
 async function save() {
