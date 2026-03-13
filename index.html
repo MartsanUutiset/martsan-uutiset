@@ -124,7 +124,9 @@ footer{border-top:4px double var(--rule);padding:.9rem 1.5rem;display:flex;justi
 <script>
 const ADMIN_USER = 'martsa';
 const ADMIN_PASS = 'weekly2026';
-const STORAGE_KEY = 'martsa_weekly_v3';
+const BIN_ID = '69b43dcec3097a1dd521a842';
+const API_KEY = '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm';
+const BIN_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
 
 let articles = [], nextId = 1, admin = false;
 let page = 'front', openId = null;
@@ -397,20 +399,26 @@ function doLogin() {
   else { loginErr = 'Väärä käyttäjätunnus tai salasana.'; render(); }
 }
 
-function save() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ articles, nextId })); } catch(e) {}
-}
-function load() {
+async function save() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return;
-    const d = JSON.parse(raw);
-    articles = d.articles || [];
-    nextId   = d.nextId   || 1;
-  } catch(e) {}
+    await fetch(BIN_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+      body: JSON.stringify({ articles, nextId })
+    });
+  } catch(e) { console.warn('Tallennus epäonnistui:', e); }
 }
-load();
-render();
+async function load() {
+  try {
+    const res = await fetch(BIN_URL + '/latest', {
+      headers: { 'X-Master-Key': API_KEY }
+    });
+    const d = await res.json();
+    articles = d.record.articles || [];
+    nextId   = d.record.nextId   || 1;
+  } catch(e) { articles = []; nextId = 1; }
+}
+load().then(render);
 </script>
 </body>
 </html>
