@@ -444,7 +444,7 @@ async function save() {
   try {
     await fetch(BIN_URL, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY },
+      headers: { 'Content-Type': 'application/json', 'X-Master-Key': '$2a$10$ieSSnU4KK.dFnBkxCzLyD.s.mZW0RDCbSd20QRgRpRC8IxM99/rLi', 'X-Access-Key' : '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm' },
       body: JSON.stringify({ articles, nextId })
     });
   } catch(e) { console.warn('Tallennus epäonnistui:', e); }
@@ -452,7 +452,7 @@ async function save() {
 async function load() {
   try {
     const res = await fetch(BIN_URL + '/latest', {
-      headers: { 'X-Master-Key': API_KEY }
+      headers: { 'X-Master-Key': API_KEY, 'X-Access-Key' : '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm' master }
     });
     const d = await res.json();
     articles = d.record.articles || [];
