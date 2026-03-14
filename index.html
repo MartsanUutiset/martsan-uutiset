@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Martsa Weekly News</title>
+<title>Martsan Uutiset</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=Source+Serif+4:ital,wght@0,300;0,400;0,600;1,400&family=Bebas+Neue&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -170,7 +170,7 @@ function render() {
     <div class="modal-bg">
       <div class="modal">
         <h2>Kirjaudu sisään</h2>
-        <p>Kirjaudu Martsa Weekly Newsiin</p>
+        <p>Kirjaudu Martsan Uutisiin</p>
         <label>Käyttäjätunnus</label>
         <input id="lu" type="text" placeholder="käyttäjätunnus">
         <label>Salasana</label>
@@ -188,7 +188,7 @@ function render() {
     <div class="modal-bg">
       <div class="modal">
         <h2>Luo tunnus</h2>
-        <p>Luo oma käyttäjätunnus Martsa Weekly Newsiin</p>
+        <p>Luo oma käyttäjätunnus Martsan Uutisiin</p>
         <label>Käyttäjätunnus</label>
         <input id="ru" type="text" placeholder="käyttäjätunnus">
         <label>Salasana</label>
@@ -215,7 +215,7 @@ function render() {
 
   const tickerItems = articles.length > 0
     ? articles.map(a => esc(a.title)).join(' &nbsp;⬥&nbsp; ')
-    : 'Tervetuloa Martsa Weekly Newsiin &nbsp;⬥&nbsp; Kirjaudu sisään footerin kautta';
+    : 'Tervetuloa Martsan Uutisiin &nbsp;⬥&nbsp; Kirjaudu sisään footerin kautta';
 
   let mainHtml = '';
 
@@ -309,7 +309,7 @@ const footerUser = loggedIn
       <span>${dateFI()}</span>
     </div>
     <div class="nameplate" id="nameplate">
-      <h1>Martsa <em>Weekly</em> News</h1>
+      <h1>Martsan <em>Uutiset</em></h1>
       <div class="np-rule"><span>Viikon tärkeimmät uutiset — Totuus ennen kaikkea</span></div>
       <p class="tagline">"Kaikki mitä sinun tarvitsee tietää — ja hieman enemmän"</p>
     </div>
@@ -319,7 +319,7 @@ const footerUser = loggedIn
     </div>
     ${mainHtml}
     <footer>
-      <span>© 2026 Martsa Weekly News</span>
+      <span>© 2026 Martsan Uutiset</span>
       <span>${n} artikkeli${n === 1 ? '' : 'a'} julkaistu</span>
       ${footerUser}
     </footer>`;
