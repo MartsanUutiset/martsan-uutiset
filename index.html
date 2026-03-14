@@ -343,7 +343,8 @@ function attachEvents() {
   const logoutBtn = document.getElementById('logout-btn');
   if (exitBtn)   exitBtn.addEventListener('click', () => { admin = false; loggedIn = false; currentUser = ''; showEditor = false; render(); });
   if (logoutBtn) logoutBtn.addEventListener('click', () => { loggedIn = false; currentUser = ''; render(); });
-
+  const loginLink = document.getElementById('login-link');
+  if (loginLink) loginLink.addEventListener('click', () => { showLogin = true; loginErr = ''; render(); });
   const np = document.getElementById('nameplate');
   if (np) np.addEventListener('click', () => { page = 'front'; render(); });
 
