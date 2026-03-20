@@ -488,6 +488,7 @@ function attachEvents() {
       body,
       date: todayFI()
     };
+    console.log('admin:', admin, 'mod:', isModerator(currentUser), 'user:', currentUser, 'loggedIn:', loggedIn);
     if (admin || isModerator(currentUser)) {
       articles.push(article);
       showEditor = false; save();
