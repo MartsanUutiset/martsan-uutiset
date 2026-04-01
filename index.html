@@ -91,29 +91,16 @@ body{background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georg
 .fields input:focus,.fields select:focus,.fields textarea:focus{border-color:var(--red)}
 .fields textarea{resize:vertical;min-height:110px}
 .ea{margin-top:.9rem;display:flex;gap:.7rem;align-items:center}
-
-/* PWA asennusnappi */
-.pwa-bar{background:var(--cream);border-bottom:1px solid #c8bba0;padding:.5rem 1.5rem;display:flex;justify-content:center;align-items:center;gap:1rem;flex-wrap:wrap}
-.pwa-bar span{font-size:.72rem;color:var(--muted);font-style:italic}
-.pwa-install-btn{background:var(--ink);color:var(--paper);border:none;padding:.35rem 1.1rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.82rem;letter-spacing:.12em;transition:background .2s}
-.pwa-install-btn:hover{background:var(--red)}
-.pwa-dismiss{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.72rem;text-decoration:underline;font-family:'Source Serif 4',serif}
-
-/* Latausnapit */
 .dl-bar{background:var(--ink);padding:.6rem 1.5rem;display:flex;justify-content:center;align-items:center;gap:.7rem;flex-wrap:wrap}
 .dl-bar-label{font-family:'Bebas Neue',sans-serif;font-size:.72rem;letter-spacing:.15em;color:#e8c070}
-.dl-btn{background:var(--paper);color:var(--ink);border:none;padding:.32rem .9rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:.1em;display:flex;align-items:center;gap:.35rem;transition:background .15s,color .15s}
+.dl-btn{background:var(--paper);color:var(--ink);border:none;padding:.32rem .9rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:.1em;transition:background .15s,color .15s}
 .dl-btn:hover{background:var(--red);color:#fff}
-
-/* Asennusohje-modal */
-.install-modal-bg{position:fixed;inset:0;background:rgba(26,18,8,.7);z-index:400;display:flex;align-items:center;justify-content:center}
-.install-modal{background:var(--paper);border:2px solid var(--rule);padding:1.8rem;width:340px;max-width:92vw;box-shadow:6px 6px 0 var(--rule)}
-.install-modal h2{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;margin-bottom:.8rem;border-bottom:1px solid var(--rule);padding-bottom:.4rem}
-.install-modal ol{padding-left:1.2rem;font-size:.85rem;line-height:1.9;color:#2c2416}
-.install-modal ol li{margin-bottom:.2rem}
-.install-modal .close-install{margin-top:1.2rem;background:var(--ink);color:var(--paper);border:none;padding:.45rem 1.4rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.88rem;letter-spacing:.12em}
-.install-modal .close-install:hover{background:var(--red)}
-
+.inst-bg{position:fixed;inset:0;background:rgba(26,18,8,.7);z-index:400;display:flex;align-items:center;justify-content:center}
+.inst-box{background:var(--paper);border:2px solid var(--rule);padding:1.8rem;width:340px;max-width:92vw;box-shadow:6px 6px 0 var(--rule)}
+.inst-box h2{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;margin-bottom:.8rem;border-bottom:1px solid var(--rule);padding-bottom:.4rem}
+.inst-box ol{padding-left:1.2rem;font-size:.85rem;line-height:1.9;color:#2c2416}
+.inst-close{margin-top:1.2rem;background:var(--ink);color:var(--paper);border:none;padding:.45rem 1.4rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.88rem;letter-spacing:.12em}
+.inst-close:hover{background:var(--red)}
 footer{border-top:4px double var(--rule);padding:.9rem 1.5rem;display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);letter-spacing:.06em}
 @media(max-width:650px){
   .grid{grid-template-columns:1fr}
@@ -122,7 +109,7 @@ footer{border-top:4px double var(--rule);padding:.9rem 1.5rem;display:flex;justi
   .masthead{flex-direction:column;gap:.2rem}
   .fields{grid-template-columns:1fr}
   footer{flex-direction:column;gap:.2rem;text-align:center}
-  .pwa-bar{flex-direction:column;gap:.4rem;text-align:center}
+  .dl-bar{gap:.4rem}
 }
 </style>
 </head>
@@ -131,484 +118,314 @@ footer{border-top:4px double var(--rule);padding:.9rem 1.5rem;display:flex;justi
 <script>
 const ADMIN_USER = 'martsa';
 const ADMIN_PASS = 'weekly2026';
-const BIN_ID = '69b43dcec3097a1dd521a842';
-const API_KEY = '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm';
-const BIN_URL = 'https://api.jsonbin.io/v3/b/' + BIN_ID;
+const BIN_URL = 'https://api.jsonbin.io/v3/b/69b43dcec3097a1dd521a842';
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Master-Key': '$2a$10$ieSSnU4KK.dFnBkxCzLyD.s.mZW0RDCbSd20QRgRpRC8IxM99/rLi',
+  'X-Access-Key': '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm'
+};
 
 let articles = [], nextId = 1, admin = false, loggedIn = false, currentUser = '';
 let page = 'front', openId = null;
 let showLogin = false, loginErr = '';
 let showRegister = false, regErr = '';
-let showEditor = false;
-let showModPanel = false;
-let showInbox = false;
-let confirmPending = null;
+let showEditor = false, showModPanel = false, showInbox = false;
+let confirmPending = null, installModal = null;
 let tapCount = 0, tapTimer = null;
 let deferredPrompt = null;
-let showPwaBar = false;
-let installModal = null; // 'android' | 'windows' | 'mac' | null
 
-// PWA: kuuntele asennustapahtuma
-window.addEventListener('beforeinstallprompt', e => {
+const INST = {
+  android: {
+    title: 'Asenna Androidille',
+    steps: ['Avaa sivu Chrome-selaimella', 'Paina oikeassa yläkulmassa kolme pistettä', 'Valitse Lisää aloitusnäytölle', 'Paina Lisää — valmis!']
+  },
+  windows: {
+    title: 'Asenna Windowsille',
+    steps: ['Avaa sivu Chrome- tai Edge-selaimella', 'Katso osoitepalkin oikeaa reunaa — paina asennuskuvaketta', 'Jos ei näy: kolme pistettä → Asenna Martsan Uutiset', 'Paina Asenna — valmis!']
+  },
+  mac: {
+    title: 'Asenna Macille',
+    steps: ['Avaa sivu Chrome-selaimella (ei Safari)', 'Katso osoitepalkin oikeaa reunaa — paina asennuskuvaketta', 'Jos ei näy: kolme pistettä → Asenna Martsan Uutiset', 'Paina Asenna — valmis!', 'Safarilla: paina jakamispainike → Lisää Dockiin']
+  }
+};
+
+window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   deferredPrompt = e;
-  showPwaBar = true;
-  render();
 });
 
-// Rekisteröi service worker
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('sw.js').catch(function(){});
   });
 }
 
 function getUsers() { return window._users || []; }
-function saveUsers(users) { window._users = users; save(); }
-function isModerator(username) {
-  const u = getUsers().find(x => x.user === username);
-  return u && u.moderator === true;
-}
-function esc(s) {
-  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function dateFI() {
-  return new Date().toLocaleDateString('fi-FI',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-}
-function todayFI() {
-  return new Date().toLocaleDateString('fi-FI');
-}
+function saveUsers(u) { window._users = u; save(); }
+function isMod(u) { var x = getUsers().find(function(y){ return y.user === u; }); return x && x.moderator === true; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function dateFI() { return new Date().toLocaleDateString('fi-FI',{weekday:'long',year:'numeric',month:'long',day:'numeric'}); }
+function todayFI() { return new Date().toLocaleDateString('fi-FI'); }
 
 function render() {
-  const app = document.getElementById('app');
-  const pendingList = window._pending || [];
+  var app = document.getElementById('app');
+  var pending = window._pending || [];
+  var isAdmin = admin;
+  var isModUser = isMod(currentUser);
 
-  const confirmHtml = confirmPending ? `
-    <div class="confirm-bg">
-      <div class="confirm-box">
-        <p>Poistetaanko artikkeli pysyvästi?</p>
-        <div class="confirm-btns">
-          <button class="cbtn-yes" id="cbtn-yes">Poista</button>
-          <button class="cbtn-no" id="cbtn-no">Peruuta</button>
-        </div>
-      </div>
-    </div>` : '';
-
-  const inboxHtml = (showInbox && admin) ? `
-    <div class="modal-bg">
-      <div class="modal" style="width:500px;max-width:95vw">
-        <h2>Saapuneet artikkelit</h2>
-        <p>${pendingList.length === 0 ? 'Ei odottavia artikkeleita.' : pendingList.length + ' artikkelia odottaa hyväksyntää'}</p>
-        ${pendingList.map(a => `
-          <div style="border:1px solid #c8bba0;padding:.8rem;margin-bottom:.8rem">
-            <strong style="font-family:'Playfair Display',serif;font-size:.95rem">${esc(a.title)}</strong>
-            <p style="font-size:.72rem;color:var(--muted);margin:.2rem 0">${esc(a.author||'')} · ${esc(a.date)}</p>
-            <p style="font-size:.8rem;margin:.4rem 0">${esc(a.body.substring(0,120))}…</p>
-            <div style="display:flex;gap:.5rem;margin-top:.6rem">
-              <button id="approve-${a.id}" style="background:var(--ink);color:#fff;border:none;padding:.3rem .9rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:.08em">✓ Hyväksy</button>
-              <button id="reject-${a.id}" style="background:var(--red);color:#fff;border:none;padding:.3rem .9rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.8rem;letter-spacing:.08em">✕ Hylkää</button>
-            </div>
-          </div>`).join('')}
-        <button class="btn-secondary" id="close-inbox-btn">Sulje</button>
-      </div>
-    </div>` : '';
-
-  const modHtml = (showModPanel && admin) ? `
-    <div class="modal-bg">
-      <div class="modal">
-        <h2>Hallitse käyttäjiä</h2>
-        <p>Anna tai poista moderaattorioikeudet</p>
-        ${getUsers().filter(u => u.user !== ADMIN_USER).map(u => `
-          <div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid #c8bba0">
-            <span style="font-size:.85rem">${esc(u.user)}</span>
-            <button id="mod-toggle-${esc(u.user)}" style="background:${u.moderator ? 'var(--red)' : 'var(--ink)'};color:#fff;border:none;padding:.2rem .7rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:.08em">
-              ${u.moderator ? 'Poista oikeudet' : 'Anna oikeudet'}
-            </button>
-            <button id="del-user-${esc(u.user)}" style="background:none;border:1px solid var(--red);color:var(--red);padding:.2rem .6rem;cursor:pointer;font-family:'Source Serif 4',serif;font-size:.72rem;margin-left:.4rem">
-              Poista käyttäjä
-            </button>
-          </div>`).join('')}
-        <div style="margin-top:1rem">
-          <button class="btn-secondary" id="close-mod-btn">Sulje</button>
-        </div>
-      </div>
-    </div>` : '';
-
-  const loginHtml = showLogin ? `
-    <div class="modal-bg">
-      <div class="modal">
-        <h2>Kirjaudu sisään</h2>
-        <p>Kirjaudu Martsan Uutisiin</p>
-        <label>Käyttäjätunnus</label>
-        <input id="lu" type="text" placeholder="käyttäjätunnus">
-        <label>Salasana</label>
-        <input id="lp" type="password" placeholder="••••••••">
-        <div class="modal-err">${esc(loginErr)}</div>
-        <div class="modal-btns">
-          <button class="btn-primary" id="lbtn">Kirjaudu sisään</button>
-          <button class="btn-secondary" id="lcbtn">Peruuta</button>
-        </div>
-        <p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">
-          Ei tiliä? <span id="go-reg" style="color:var(--red);cursor:pointer;text-decoration:underline">Luo tunnus</span>
-        </p>
-      </div>
-    </div>` : showRegister ? `
-    <div class="modal-bg">
-      <div class="modal">
-        <h2>Luo tunnus</h2>
-        <p>Luo oma käyttäjätunnus Martsan Uutisiin</p>
-        <label>Käyttäjätunnus</label>
-        <input id="ru" type="text" placeholder="käyttäjätunnus">
-        <label>Salasana</label>
-        <input id="rp" type="password" placeholder="••••••••">
-        <label>Salasana uudelleen</label>
-        <input id="rp2" type="password" placeholder="••••••••">
-        <div class="modal-err">${esc(regErr)}</div>
-        <div class="modal-btns">
-          <button class="btn-primary" id="rbtn">Luo tunnus</button>
-          <button class="btn-secondary" id="rcbtn">Peruuta</button>
-        </div>
-        <p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">
-          Onko jo tunnus? <span id="go-login" style="color:var(--red);cursor:pointer;text-decoration:underline">Kirjaudu</span>
-        </p>
-      </div>
-    </div>` : '';
-
-  const installInstructions = {
-    android: { title: '📱 Asenna Androidille', steps: ['Avaa sivu <b>Chrome</b>-selaimella', 'Paina oikeassa yläkulmassa <b>kolme pistettä ⋮</b>', 'Valitse <b>"Lisää aloitusnäytölle"</b>', 'Paina <b>"Lisää"</b> — valmis!'] },
-    windows: { title: '🖥 Asenna Windowsille', steps: ['Avaa sivu <b>Chrome</b>- tai <b>Edge</b>-selaimella', 'Paina osoitepalkin oikeassa reunassa olevaa <b>asennuskuvaketta ⊕</b>', 'Jos ei näy: paina <b>kolme pistettä ⋮</b> → <b>"Asenna Martsan Uutiset"</b>', 'Paina <b>"Asenna"</b> — valmis!'] },
-    mac: { title: '🍎 Asenna Macille', steps: ['Avaa sivu <b>Chrome</b>-selaimella (ei Safari)', 'Paina osoitepalkin oikeassa reunassa olevaa <b>asennuskuvaketta ⊕</b>', 'Jos ei näy: paina <b>kolme pistettä ⋮</b> → <b>"Asenna Martsan Uutiset"</b>', 'Paina <b>"Asenna"</b> — valmis!', '<i>Safarilla: paina jakamispainike → "Lisää Dockiin"</i>'] }
-  };
-
-  const installModalHtml = installModal ? `
-    <div class="install-modal-bg" id="install-modal-bg">
-      <div class="install-modal">
-        <h2>${installInstructions[installModal].title}</h2>
-        <ol>${installInstructions[installModal].steps.map(s => `<li>${s}</li>`).join('')}</ol>
-        <button class="close-install" id="close-install-btn">Sulje</button>
-      </div>
-    </div>` : '';
-
-  const dlBarHtml = `
-    <div class="dl-bar">
-      <span class="dl-bar-label">Asenna sovellus:</span>
-      <button class="dl-btn" id="dl-android">📱 Android</button>
-      <button class="dl-btn" id="dl-windows">🖥 Windows</button>
-      <button class="dl-btn" id="dl-mac">🍎 Mac</button>
-    </div>`;
-    <div class="pwa-bar">
-      <span>📰 Asenna Martsan Uutiset sovelluksena laitteellesi</span>
-      <button class="pwa-install-btn" id="pwa-install-btn">⬇ Asenna sovellus</button>
-      <button class="pwa-dismiss" id="pwa-dismiss-btn">Ei kiitos</button>
-    </div>` : '';
-
-  const adminBarHtml = (admin || isModerator(currentUser)) ? `
-    <div class="admin-bar">
-      <span>⚙ ${admin ? 'HALLINTAMOODI' : 'MODERAATTORI'} PÄÄLLÄ</span>
-      ${admin ? `<button id="open-inbox-btn">📬 Saapuneet${(window._pending||[]).length > 0 ? ' ('+window._pending.length+')' : ''}</button>` : ''}
-      ${admin ? `<button id="open-mod-btn">👥 Hallitse käyttäjiä</button>` : ''}
-      <button id="exit-admin-btn">✕ Kirjaudu ulos</button>
-    </div>` : '';
-
-  const tickerItems = articles.length > 0
-    ? articles.map(a => esc(a.title)).join(' &nbsp;⬥&nbsp; ')
-    : 'Tervetuloa Martsan Uutisiin &nbsp;⬥&nbsp; Kirjaudu sisään footerin kautta';
-
-  let mainHtml = '';
-
-  if (page === 'article') {
-    const a = articles.find(x => x.id === openId);
-    if (a) {
-      const byline = [a.author, a.section, a.date].filter(Boolean).map(esc).join(' · ');
-      const body = a.body.split(/\n\n+/).filter(p => p.trim())
-        .map(p => `<p>${esc(p.trim().replace(/\n/g,' '))}</p>`).join('');
-      mainHtml = `
-        <div class="art-wrap">
-          <button class="back-btn" id="back-btn">← Takaisin etusivulle</button>
-          ${a.section ? `<div class="art-badge">${esc(a.section)}</div>` : ''}
-          <h1 class="art-title">${esc(a.title)}</h1>
-          <div class="art-byline">${byline ? `<span>${byline}</span>` : ''}</div>
-          <div class="art-body">${body}</div>
-          <hr class="art-end">
-          <button class="art-del-btn" id="art-del-btn" data-id="${a.id}">✕ Poista artikkeli</button>
-        </div>`;
-    }
-  } else {
-    const renderCol = col => {
-      const list = articles.filter(a => a.column === col);
-      if (!list.length) return `<div class="empty">Ei artikkeleita vielä.</div>`;
-      return list.map(a => {
-        const isLead = a.column === 'center', tag = isLead ? 'h2' : 'h3';
-        const excerpt = a.body.replace(/\n/g,' ').substring(0,150) + (a.body.length > 150 ? '…' : '');
-        const byline = [a.author, a.section, a.date].filter(Boolean).map(esc).join(' · ');
-        return `
-          <div class="card${isLead ? ' lead' : ''}" data-open="${a.id}">
-            <button class="del-btn" data-del="${a.id}">✕ Poista</button>
-            <${tag}>${esc(a.title)}</${tag}>
-            ${byline ? `<p class="byline">${byline}</p>` : ''}
-            <p class="excerpt">${esc(excerpt)}</p>
-            <span class="hint">Lue artikkeli →</span>
-          </div>`;
-      }).join(col === 'center' ? '<hr class="divh">' : '');
-    };
-
-    mainHtml = `
-      <div class="container">
-        <div class="grid">
-          <div class="col"><div class="sec-label">Uutiset</div>${renderCol('left')}</div>
-          <div class="divider"></div>
-          <div class="col"><div class="sec-label">Pääuutinen</div>${renderCol('center')}</div>
-          <div class="divider"></div>
-          <div class="col"><div class="sec-label">Lisää</div>${renderCol('right')}</div>
-        </div>
-      </div>
-      <button class="add-btn" id="add-btn">${showEditor ? '✕ Sulje lomake' : '+ Lisää uutinen'}</button>
-      <div class="editor${showEditor ? ' open' : ''}">
-        <div style="max-width:1050px;margin:0 auto">
-          <h2>✍ Kirjoita uusi uutinen</h2>
-          <div class="fields">
-            <div><label>Otsikko *</label><input id="ft" placeholder="Otsikko…"></div>
-            <div><label>Kirjoittaja</label><input id="fa" placeholder="Toim. M. Salonen"></div>
-            <div><label>Osasto</label><input id="fs" placeholder="Urheilu, Kulttuuri…"></div>
-            <div><label>Palsta</label>
-              <select id="fc">
-                <option value="left">Vasen — Uutiset</option>
-                <option value="center" selected>Keskellä — Pääuutinen</option>
-                <option value="right">Oikea — Lisää</option>
-              </select>
-            </div>
-            <div class="fw"><label>Teksti *</label>
-              <textarea id="fb" placeholder="Kirjoita teksti tähän…"></textarea>
-            </div>
-          </div>
-          <div class="ea">
-            <button class="btn-primary" id="pub-btn" style="flex:0;padding:.5rem 1.5rem">Julkaise</button>
-            <button class="btn-secondary" id="cancel-btn">Peruuta</button>
-          </div>
-        </div>
-      </div>`;
+  var confirmHtml = '';
+  if (confirmPending) {
+    confirmHtml = '<div class="confirm-bg"><div class="confirm-box"><p>Poistetaanko artikkeli pysyvästi?</p><div class="confirm-btns"><button class="cbtn-yes" id="cbtn-yes">Poista</button><button class="cbtn-no" id="cbtn-no">Peruuta</button></div></div></div>';
   }
 
-  const n = articles.length;
-  const isMod = admin || isModerator(currentUser);
-  const footerUser = loggedIn
-    ? `<span>Kirjautunut: ${esc(currentUser)}${isMod && !admin ? ' ★' : ''} &nbsp;·&nbsp; <span id="logout-btn" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu ulos</span></span>`
-    : `<span><span id="atrig" style="cursor:default;user-select:none">toimitus@martsanuutiset.fi</span> &nbsp;·&nbsp; <span id="login-link" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu / Luo tunnus</span></span>`;
+  var instHtml = '';
+  if (installModal && INST[installModal]) {
+    var info = INST[installModal];
+    var steps = info.steps.map(function(s){ return '<li>' + esc(s) + '</li>'; }).join('');
+    instHtml = '<div class="inst-bg" id="inst-bg"><div class="inst-box"><h2>' + esc(info.title) + '</h2><ol>' + steps + '</ol><button class="inst-close" id="inst-close">Sulje</button></div></div>';
+  }
 
-  app.className = (admin || isModerator(currentUser)) ? 'admin-on' : (loggedIn ? 'logged-in' : '');
+  var inboxHtml = '';
+  if (showInbox && isAdmin) {
+    var pRows = pending.map(function(a) {
+      return '<div style="border:1px solid #c8bba0;padding:.8rem;margin-bottom:.8rem">'
+        + '<strong style="font-family:\'Playfair Display\',serif;font-size:.95rem">' + esc(a.title) + '</strong>'
+        + '<p style="font-size:.72rem;color:var(--muted);margin:.2rem 0">' + esc(a.author||'') + ' · ' + esc(a.date) + '</p>'
+        + '<p style="font-size:.8rem;margin:.4rem 0">' + esc(a.body.substring(0,120)) + '…</p>'
+        + '<div style="display:flex;gap:.5rem;margin-top:.6rem">'
+        + '<button id="approve-' + a.id + '" style="background:var(--ink);color:#fff;border:none;padding:.3rem .9rem;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:.8rem">Hyväksy</button>'
+        + '<button id="reject-' + a.id + '" style="background:var(--red);color:#fff;border:none;padding:.3rem .9rem;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:.8rem">Hylkää</button>'
+        + '</div></div>';
+    }).join('');
+    inboxHtml = '<div class="modal-bg"><div class="modal" style="width:500px;max-width:95vw"><h2>Saapuneet artikkelit</h2><p>' + (pending.length === 0 ? 'Ei odottavia artikkeleita.' : pending.length + ' artikkelia odottaa') + '</p>' + pRows + '<button class="btn-secondary" id="close-inbox-btn">Sulje</button></div></div>';
+  }
 
-  app.innerHTML = `
-    ${installModalHtml}
-    ${confirmHtml}
-    ${inboxHtml}
-    ${modHtml}
-    ${loginHtml}
-    ${pwaBarHtml}
-    ${adminBarHtml}
-    ${dlBarHtml}
-    <div class="masthead">
-      <span>Perustettu 2026</span>
-      <span style="flex:1;text-align:center">★ Luotettavaa uutisointia joka viikko ★</span>
-      <span>${dateFI()}</span>
-    </div>
-    <div class="nameplate" id="nameplate">
-      <h1>Martsan <em>Uutiset</em></h1>
-      <div class="np-rule"><span>Viikon tärkeimmät uutiset — Totuus ennen kaikkea</span></div>
-      <p class="tagline">"Kaikki mitä sinun tarvitsee tietää — ja hieman enemmän"</p>
-    </div>
-    <div class="ticker">
-      <span class="ticker-label">UUTISET NYT</span>
-      <span class="ticker-inner">${tickerItems} &nbsp;⬥&nbsp; </span>
-    </div>
-    ${mainHtml}
-    <footer>
-      <span>© 2026 Martsan Uutiset</span>
-      <span>${n} artikkeli${n === 1 ? '' : 'a'} julkaistu</span>
-      ${footerUser}
-    </footer>`;
+  var modHtml = '';
+  if (showModPanel && isAdmin) {
+    var uRows = getUsers().filter(function(u){ return u.user !== ADMIN_USER; }).map(function(u) {
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:.4rem 0;border-bottom:1px solid #c8bba0">'
+        + '<span style="font-size:.85rem">' + esc(u.user) + '</span>'
+        + '<button id="mod-toggle-' + esc(u.user) + '" style="background:' + (u.moderator ? 'var(--red)' : 'var(--ink)') + ';color:#fff;border:none;padding:.2rem .7rem;cursor:pointer;font-family:\'Bebas Neue\',sans-serif;font-size:.75rem">' + (u.moderator ? 'Poista oikeudet' : 'Anna oikeudet') + '</button>'
+        + '<button id="del-user-' + esc(u.user) + '" style="background:none;border:1px solid var(--red);color:var(--red);padding:.2rem .6rem;cursor:pointer;font-size:.72rem;margin-left:.4rem">Poista</button>'
+        + '</div>';
+    }).join('');
+    modHtml = '<div class="modal-bg"><div class="modal"><h2>Hallitse käyttäjiä</h2><p>Anna tai poista moderaattorioikeudet</p>' + uRows + '<div style="margin-top:1rem"><button class="btn-secondary" id="close-mod-btn">Sulje</button></div></div></div>';
+  }
+
+  var loginHtml = '';
+  if (showLogin) {
+    loginHtml = '<div class="modal-bg"><div class="modal"><h2>Kirjaudu sisään</h2><p>Kirjaudu Martsan Uutisiin</p><label>Käyttäjätunnus</label><input id="lu" type="text" placeholder="käyttäjätunnus"><label>Salasana</label><input id="lp" type="password" placeholder="••••••••"><div class="modal-err">' + esc(loginErr) + '</div><div class="modal-btns"><button class="btn-primary" id="lbtn">Kirjaudu sisään</button><button class="btn-secondary" id="lcbtn">Peruuta</button></div><p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">Ei tiliä? <span id="go-reg" style="color:var(--red);cursor:pointer;text-decoration:underline">Luo tunnus</span></p></div></div>';
+  } else if (showRegister) {
+    loginHtml = '<div class="modal-bg"><div class="modal"><h2>Luo tunnus</h2><p>Luo oma käyttäjätunnus Martsan Uutisiin</p><label>Käyttäjätunnus</label><input id="ru" type="text" placeholder="käyttäjätunnus"><label>Salasana</label><input id="rp" type="password" placeholder="••••••••"><label>Salasana uudelleen</label><input id="rp2" type="password" placeholder="••••••••"><div class="modal-err">' + esc(regErr) + '</div><div class="modal-btns"><button class="btn-primary" id="rbtn">Luo tunnus</button><button class="btn-secondary" id="rcbtn">Peruuta</button></div><p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">Onko jo tunnus? <span id="go-login" style="color:var(--red);cursor:pointer;text-decoration:underline">Kirjaudu</span></p></div></div>';
+  }
+
+  var adminBarHtml = '';
+  if (isAdmin || isModUser) {
+    var inboxCount = (window._pending||[]).length;
+    adminBarHtml = '<div class="admin-bar"><span>' + (isAdmin ? 'HALLINTAMOODI' : 'MODERAATTORI') + ' PÄÄLLÄ</span>'
+      + (isAdmin ? '<button id="open-inbox-btn">Saapuneet' + (inboxCount > 0 ? ' (' + inboxCount + ')' : '') + '</button>' : '')
+      + (isAdmin ? '<button id="open-mod-btn">Hallitse käyttäjiä</button>' : '')
+      + '<button id="exit-admin-btn">Kirjaudu ulos</button></div>';
+  }
+
+  var dlBarHtml = '<div class="dl-bar"><span class="dl-bar-label">Asenna sovellus:</span><button class="dl-btn" id="dl-android">Android</button><button class="dl-btn" id="dl-windows">Windows</button><button class="dl-btn" id="dl-mac">Mac</button></div>';
+
+  var tickerItems = articles.length > 0
+    ? articles.map(function(a){ return esc(a.title); }).join(' &nbsp;⬥&nbsp; ')
+    : 'Tervetuloa Martsan Uutisiin &nbsp;⬥&nbsp; Kirjaudu sisään footerin kautta';
+
+  var mainHtml = '';
+
+  if (page === 'article') {
+    var a = articles.find(function(x){ return x.id === openId; });
+    if (a) {
+      var byline = [a.author, a.section, a.date].filter(Boolean).map(esc).join(' · ');
+      var body = a.body.split(/\n\n+/).filter(function(p){ return p.trim(); })
+        .map(function(p){ return '<p>' + esc(p.trim().replace(/\n/g,' ')) + '</p>'; }).join('');
+      mainHtml = '<div class="art-wrap"><button class="back-btn" id="back-btn">← Takaisin etusivulle</button>'
+        + (a.section ? '<div class="art-badge">' + esc(a.section) + '</div>' : '')
+        + '<h1 class="art-title">' + esc(a.title) + '</h1>'
+        + '<div class="art-byline">' + (byline ? '<span>' + byline + '</span>' : '') + '</div>'
+        + '<div class="art-body">' + body + '</div>'
+        + '<hr class="art-end">'
+        + '<button class="art-del-btn" id="art-del-btn" data-id="' + a.id + '">Poista artikkeli</button>'
+        + '</div>';
+    }
+  } else {
+    function renderCol(col) {
+      var list = articles.filter(function(a){ return a.column === col; });
+      if (!list.length) return '<div class="empty">Ei artikkeleita vielä.</div>';
+      return list.map(function(a) {
+        var isLead = col === 'center';
+        var tag = isLead ? 'h2' : 'h3';
+        var excerpt = a.body.replace(/\n/g,' ').substring(0,150) + (a.body.length > 150 ? '…' : '');
+        var bl = [a.author, a.section, a.date].filter(Boolean).map(esc).join(' · ');
+        return '<div class="card' + (isLead ? ' lead' : '') + '" data-open="' + a.id + '">'
+          + '<button class="del-btn" data-del="' + a.id + '">Poista</button>'
+          + '<' + tag + '>' + esc(a.title) + '</' + tag + '>'
+          + (bl ? '<p class="byline">' + bl + '</p>' : '')
+          + '<p class="excerpt">' + esc(excerpt) + '</p>'
+          + '<span class="hint">Lue artikkeli →</span>'
+          + '</div>';
+      }).join(col === 'center' ? '<hr class="divh">' : '');
+    }
+
+    var editorHtml = '';
+    if (isAdmin || isModUser || loggedIn) {
+      editorHtml = '<button class="add-btn" id="add-btn">' + (showEditor ? 'Sulje lomake' : '+ Lisää uutinen') + '</button>'
+        + '<div class="editor' + (showEditor ? ' open' : '') + '">'
+        + '<div style="max-width:1050px;margin:0 auto">'
+        + '<h2>Kirjoita uusi uutinen</h2>'
+        + '<div class="fields">'
+        + '<div><label>Otsikko *</label><input id="ft" placeholder="Otsikko…"></div>'
+        + '<div><label>Kirjoittaja</label><input id="fa" placeholder="Toim. M. Salonen"></div>'
+        + '<div><label>Osasto</label><input id="fs" placeholder="Urheilu, Kulttuuri…"></div>'
+        + '<div><label>Palsta</label><select id="fc"><option value="left">Vasen — Uutiset</option><option value="center" selected>Keskellä — Pääuutinen</option><option value="right">Oikea — Lisää</option></select></div>'
+        + '<div class="fw"><label>Teksti *</label><textarea id="fb" placeholder="Kirjoita teksti tähän…"></textarea></div>'
+        + '</div>'
+        + '<div class="ea"><button class="btn-primary" id="pub-btn" style="flex:0;padding:.5rem 1.5rem">Julkaise</button><button class="btn-secondary" id="cancel-btn">Peruuta</button></div>'
+        + '</div></div>';
+    }
+
+    mainHtml = '<div class="container"><div class="grid">'
+      + '<div class="col"><div class="sec-label">Uutiset</div>' + renderCol('left') + '</div>'
+      + '<div class="divider"></div>'
+      + '<div class="col"><div class="sec-label">Pääuutinen</div>' + renderCol('center') + '</div>'
+      + '<div class="divider"></div>'
+      + '<div class="col"><div class="sec-label">Lisää</div>' + renderCol('right') + '</div>'
+      + '</div></div>' + editorHtml;
+  }
+
+  var n = articles.length;
+  var footerUser = loggedIn
+    ? '<span>Kirjautunut: ' + esc(currentUser) + (isModUser && !isAdmin ? ' ★' : '') + ' &nbsp;·&nbsp; <span id="logout-btn" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu ulos</span></span>'
+    : '<span><span id="atrig" style="cursor:default;user-select:none">toimitus@martsanuutiset.fi</span> &nbsp;·&nbsp; <span id="login-link" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu / Luo tunnus</span></span>';
+
+  app.className = (isAdmin || isModUser) ? 'admin-on' : (loggedIn ? 'logged-in' : '');
+
+  app.innerHTML = confirmHtml + instHtml + inboxHtml + modHtml + loginHtml + adminBarHtml + dlBarHtml
+    + '<div class="masthead"><span>Perustettu 2026</span><span style="flex:1;text-align:center">★ Luotettavaa uutisointia joka viikko ★</span><span>' + dateFI() + '</span></div>'
+    + '<div class="nameplate" id="nameplate"><h1>Martsan <em>Uutiset</em></h1><div class="np-rule"><span>Viikon tärkeimmät uutiset — Totuus ennen kaikkea</span></div><p class="tagline">"Kaikki mitä sinun tarvitsee tietää — ja hieman enemmän"</p></div>'
+    + '<div class="ticker"><span class="ticker-label">UUTISET NYT</span><span class="ticker-inner">' + tickerItems + ' &nbsp;⬥&nbsp; </span></div>'
+    + mainHtml
+    + '<footer><span>© 2026 Martsan Uutiset</span><span>' + n + ' artikkeli' + (n === 1 ? '' : 'a') + ' julkaistu</span>' + footerUser + '</footer>';
 
   attachEvents();
-  if (showLogin) setTimeout(() => { const el = document.getElementById('lu'); if (el) el.focus(); }, 30);
-  if (showRegister) setTimeout(() => { const el = document.getElementById('ru'); if (el) el.focus(); }, 30);
+  if (showLogin) setTimeout(function(){ var el = document.getElementById('lu'); if(el) el.focus(); }, 30);
+  if (showRegister) setTimeout(function(){ var el = document.getElementById('ru'); if(el) el.focus(); }, 30);
 }
 
 function attachEvents() {
-  const cyes = document.getElementById('cbtn-yes');
-  const cno  = document.getElementById('cbtn-no');
-  if (cyes) cyes.addEventListener('click', () => {
+  function on(id, fn) { var el = document.getElementById(id); if(el) el.addEventListener('click', fn); }
+
+  on('cbtn-yes', function() {
     if (confirmPending) {
-      const { id, goBack } = confirmPending;
+      var id = confirmPending.id, goBack = confirmPending.goBack;
       confirmPending = null;
-      articles = articles.filter(a => a.id !== id);
+      articles = articles.filter(function(a){ return a.id !== id; });
       save();
       if (goBack) page = 'front';
       render();
     }
   });
-  if (cno) cno.addEventListener('click', () => { confirmPending = null; render(); });
+  on('cbtn-no', function(){ confirmPending = null; render(); });
 
-  // Latausnapit
-  const dlAndroid = document.getElementById('dl-android');
-  const dlWindows = document.getElementById('dl-windows');
-  const dlMac = document.getElementById('dl-mac');
-  const closeInstall = document.getElementById('close-install-btn');
-  const installBg = document.getElementById('install-modal-bg');
-  if (dlAndroid) dlAndroid.addEventListener('click', () => { installModal = 'android'; render(); });
-  if (dlWindows) dlWindows.addEventListener('click', () => { installModal = 'windows'; render(); });
-  if (dlMac) dlMac.addEventListener('click', () => { installModal = 'mac'; render(); });
-  if (closeInstall) closeInstall.addEventListener('click', () => { installModal = null; render(); });
-  if (installBg) installBg.addEventListener('click', e => { if (e.target === installBg) { installModal = null; render(); } });
+  on('dl-android', function(){ installModal = 'android'; render(); });
+  on('dl-windows', function(){ installModal = 'windows'; render(); });
+  on('dl-mac',     function(){ installModal = 'mac'; render(); });
+  on('inst-close', function(){ installModal = null; render(); });
+  var instBg = document.getElementById('inst-bg');
+  if (instBg) instBg.addEventListener('click', function(e){ if(e.target === instBg){ installModal = null; render(); } });
 
-  // PWA napit
-  const pwaBtn = document.getElementById('pwa-install-btn');
-  const pwaDismiss = document.getElementById('pwa-dismiss-btn');
-  if (pwaBtn) pwaBtn.addEventListener('click', async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    showPwaBar = false;
-    render();
-  });
-  if (pwaDismiss) pwaDismiss.addEventListener('click', () => { showPwaBar = false; render(); });
+  on('lbtn', doLogin);
+  on('lcbtn', function(){ showLogin = false; render(); });
+  var lu = document.getElementById('lu'), lp = document.getElementById('lp');
+  if (lu) lu.addEventListener('keydown', function(e){ if(e.key==='Enter' && lp) lp.focus(); });
+  if (lp) lp.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 
-  const lbtn  = document.getElementById('lbtn');
-  const lcbtn = document.getElementById('lcbtn');
-  const lu    = document.getElementById('lu');
-  const lp    = document.getElementById('lp');
-  if (lbtn)  lbtn.addEventListener('click', doLogin);
-  if (lcbtn) lcbtn.addEventListener('click', () => { showLogin = false; render(); });
-  if (lu)    lu.addEventListener('keydown', e => { if (e.key === 'Enter' && lp) lp.focus(); });
-  if (lp)    lp.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  on('go-reg',   function(){ showLogin=false; showRegister=true; regErr=''; render(); });
+  on('go-login', function(){ showRegister=false; showLogin=true; loginErr=''; render(); });
+  on('rbtn',  doRegister);
+  on('rcbtn', function(){ showRegister=false; render(); });
+  var rp2 = document.getElementById('rp2');
+  if (rp2) rp2.addEventListener('keydown', function(e){ if(e.key==='Enter') doRegister(); });
 
-  const goReg   = document.getElementById('go-reg');
-  const goLogin = document.getElementById('go-login');
-  const rbtn    = document.getElementById('rbtn');
-  const rcbtn   = document.getElementById('rcbtn');
-  const rp2     = document.getElementById('rp2');
-  if (goReg)   goReg.addEventListener('click', switchToRegister);
-  if (goLogin) goLogin.addEventListener('click', switchToLogin);
-  if (rbtn)    rbtn.addEventListener('click', doRegister);
-  if (rcbtn)   rcbtn.addEventListener('click', () => { showRegister = false; render(); });
-  if (rp2)     rp2.addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+  function fullLogout() { admin=false; loggedIn=false; currentUser=''; showEditor=false; showInbox=false; showModPanel=false; render(); }
+  on('exit-admin-btn', fullLogout);
+  on('logout-btn', fullLogout);
 
-  const exitBtn   = document.getElementById('exit-admin-btn');
-  const logoutBtn = document.getElementById('logout-btn');
-  if (exitBtn) exitBtn.addEventListener('click', () => {
-    admin = false; loggedIn = false; currentUser = '';
-    showEditor = false; showInbox = false; showModPanel = false;
-    render();
-  });
-  if (logoutBtn) logoutBtn.addEventListener('click', () => {
-    admin = false; loggedIn = false; currentUser = '';
-    showEditor = false; showInbox = false; showModPanel = false;
-    render();
+  on('open-inbox-btn',  function(){ showInbox=true; render(); });
+  on('close-inbox-btn', function(){ showInbox=false; render(); });
+  on('open-mod-btn',    function(){ showModPanel=true; render(); });
+  on('close-mod-btn',   function(){ showModPanel=false; render(); });
+
+  (window._pending||[]).forEach(function(a) {
+    on('approve-'+a.id, function(){ articles.push(a); window._pending=window._pending.filter(function(p){ return p.id!==a.id; }); save(); render(); });
+    on('reject-'+a.id,  function(){ window._pending=window._pending.filter(function(p){ return p.id!==a.id; }); save(); render(); });
   });
 
-  const openInboxBtn  = document.getElementById('open-inbox-btn');
-  const closeInboxBtn = document.getElementById('close-inbox-btn');
-  if (openInboxBtn)  openInboxBtn.addEventListener('click', () => { showInbox = true; render(); });
-  if (closeInboxBtn) closeInboxBtn.addEventListener('click', () => { showInbox = false; render(); });
-
-  (window._pending || []).forEach(a => {
-    const approveBtn = document.getElementById('approve-' + a.id);
-    const rejectBtn  = document.getElementById('reject-'  + a.id);
-    if (approveBtn) approveBtn.addEventListener('click', () => {
-      articles.push(a);
-      window._pending = window._pending.filter(p => p.id !== a.id);
-      save(); render();
+  getUsers().filter(function(u){ return u.user!==ADMIN_USER; }).forEach(function(u) {
+    on('mod-toggle-'+u.user, function(){
+      var users=getUsers(), t=users.find(function(x){ return x.user===u.user; });
+      if(t) t.moderator=!t.moderator;
+      saveUsers(users); render();
     });
-    if (rejectBtn) rejectBtn.addEventListener('click', () => {
-      window._pending = window._pending.filter(p => p.id !== a.id);
+    on('del-user-'+u.user, function(){
+      window._users=getUsers().filter(function(x){ return x.user!==u.user; });
       save(); render();
     });
   });
 
-  const openModBtn  = document.getElementById('open-mod-btn');
-  const closeModBtn = document.getElementById('close-mod-btn');
-  if (openModBtn)  openModBtn.addEventListener('click', () => { showModPanel = true; render(); });
-  if (closeModBtn) closeModBtn.addEventListener('click', () => { showModPanel = false; render(); });
+  on('login-link', function(){ showLogin=true; loginErr=''; render(); });
+  on('nameplate',  function(){ page='front'; render(); });
 
-  getUsers().filter(u => u.user !== ADMIN_USER).forEach(u => {
-    const btn = document.getElementById('mod-toggle-' + u.user);
-    if (btn) btn.addEventListener('click', () => {
-      const users = getUsers();
-      const target = users.find(x => x.user === u.user);
-      if (target) target.moderator = !target.moderator;
-      saveUsers(users);
-      render();
-    });
-    const delBtn = document.getElementById('del-user-' + u.user);
-    if (delBtn) delBtn.addEventListener('click', () => {
-      window._users = getUsers().filter(x => x.user !== u.user);
-      save(); render();
-    });
-  });
-
-  const loginLink = document.getElementById('login-link');
-  if (loginLink) loginLink.addEventListener('click', () => { showLogin = true; loginErr = ''; render(); });
-
-  const np = document.getElementById('nameplate');
-  if (np) np.addEventListener('click', () => { page = 'front'; render(); });
-
-  const atrig = document.getElementById('atrig');
-  if (atrig) atrig.addEventListener('click', () => {
+  var atrig = document.getElementById('atrig');
+  if (atrig) atrig.addEventListener('click', function(){
     tapCount++;
     clearTimeout(tapTimer);
-    if (tapCount >= 5) { tapCount = 0; showLogin = true; loginErr = ''; render(); }
-    else tapTimer = setTimeout(() => { tapCount = 0; }, 2000);
+    if (tapCount>=5) { tapCount=0; showLogin=true; loginErr=''; render(); }
+    else tapTimer=setTimeout(function(){ tapCount=0; }, 2000);
   });
 
-  const back = document.getElementById('back-btn');
-  if (back) back.addEventListener('click', () => { page = 'front'; render(); });
+  on('back-btn', function(){ page='front'; render(); });
 
-  const artDel = document.getElementById('art-del-btn');
-  if (artDel) artDel.addEventListener('click', () => {
-    confirmPending = { id: parseInt(artDel.dataset.id), goBack: true };
-    render();
-  });
+  var artDel = document.getElementById('art-del-btn');
+  if (artDel) artDel.addEventListener('click', function(){ confirmPending={id:parseInt(artDel.dataset.id),goBack:true}; render(); });
 
-  document.querySelectorAll('[data-open]').forEach(el => {
-    el.addEventListener('click', e => {
-      if (e.target.closest('[data-del]')) return;
-      page = 'article'; openId = parseInt(el.dataset.open); render();
+  document.querySelectorAll('[data-open]').forEach(function(el){
+    el.addEventListener('click', function(e){
+      if(e.target.closest('[data-del]')) return;
+      page='article'; openId=parseInt(el.dataset.open); render();
     });
   });
-  document.querySelectorAll('[data-del]').forEach(btn => {
-    btn.addEventListener('click', e => {
+  document.querySelectorAll('[data-del]').forEach(function(btn){
+    btn.addEventListener('click', function(e){
       e.stopPropagation();
-      confirmPending = { id: parseInt(btn.dataset.del), goBack: false };
-      render();
+      confirmPending={id:parseInt(btn.dataset.del),goBack:false}; render();
     });
   });
 
-  const addBtn    = document.getElementById('add-btn');
-  const cancelBtn = document.getElementById('cancel-btn');
-  if (addBtn)    addBtn.addEventListener('click', () => { showEditor = !showEditor; render(); });
-  if (cancelBtn) cancelBtn.addEventListener('click', () => { showEditor = false; render(); });
+  on('add-btn',    function(){ showEditor=!showEditor; render(); });
+  on('cancel-btn', function(){ showEditor=false; render(); });
 
-  const pubBtn = document.getElementById('pub-btn');
-  if (pubBtn) pubBtn.addEventListener('click', () => {
-    const title = (document.getElementById('ft').value || '').trim();
-    const body  = (document.getElementById('fb').value || '').trim();
-    if (!title) { alert('Kirjoita otsikko.'); return; }
-    if (!body)  { alert('Kirjoita teksti.'); return; }
-    const id = nextId++;
-    const article = {
-      id, title,
-      author:  (document.getElementById('fa').value || '').trim(),
-      section: (document.getElementById('fs').value || '').trim(),
-      column:  document.getElementById('fc').value,
-      body, date: todayFI()
+  on('pub-btn', function(){
+    var title=(document.getElementById('ft').value||'').trim();
+    var body=(document.getElementById('fb').value||'').trim();
+    if(!title){ alert('Kirjoita otsikko.'); return; }
+    if(!body){ alert('Kirjoita teksti.'); return; }
+    var id=nextId++;
+    var article={
+      id:id, title:title,
+      author:(document.getElementById('fa').value||'').trim(),
+      section:(document.getElementById('fs').value||'').trim(),
+      column:document.getElementById('fc').value,
+      body:body, date:todayFI()
     };
-    if (admin || isModerator(currentUser)) {
-      articles.push(article);
-      showEditor = false; save();
-      page = 'article'; openId = id;
+    if(admin||isMod(currentUser)){
+      articles.push(article); showEditor=false; save(); page='article'; openId=id;
     } else {
-      window._pending = window._pending || [];
-      window._pending.push(article);
-      showEditor = false; save();
+      window._pending=window._pending||[];
+      window._pending.push(article); showEditor=false; save();
       alert('Artikkeli lähetetty tarkastettavaksi!');
     }
     render();
@@ -616,67 +433,50 @@ function attachEvents() {
 }
 
 function doLogin() {
-  const u = (document.getElementById('lu').value || '').trim();
-  const p = (document.getElementById('lp').value || '');
-  if (u === ADMIN_USER && p === ADMIN_PASS) {
-    showLogin = false; admin = true; loggedIn = true; currentUser = u; render(); return;
-  }
-  const match = getUsers().find(x => x.user === u && x.pass === p);
-  if (match) {
-    showLogin = false; loggedIn = true; currentUser = u; render(); return;
-  }
-  loginErr = 'Väärä käyttäjätunnus tai salasana.'; render();
+  var u=(document.getElementById('lu').value||'').trim();
+  var p=(document.getElementById('lp').value||'');
+  if(u===ADMIN_USER && p===ADMIN_PASS){ showLogin=false; admin=true; loggedIn=true; currentUser=u; render(); return; }
+  var match=getUsers().find(function(x){ return x.user===u && x.pass===p; });
+  if(match){ showLogin=false; loggedIn=true; currentUser=u; render(); return; }
+  loginErr='Väärä käyttäjätunnus tai salasana.'; render();
 }
 
 function doRegister() {
-  const u  = (document.getElementById('ru').value || '').trim();
-  const p  = (document.getElementById('rp').value || '');
-  const p2 = (document.getElementById('rp2').value || '');
-  if (!u) { regErr = 'Kirjoita käyttäjätunnus.'; render(); return; }
-  if (u === ADMIN_USER) { regErr = 'Tämä käyttäjätunnus ei ole saatavilla.'; render(); return; }
-  if (p.length < 4) { regErr = 'Salasanan pitää olla vähintään 4 merkkiä.'; render(); return; }
-  if (p !== p2) { regErr = 'Salasanat eivät täsmää.'; render(); return; }
-  const users = getUsers();
-  if (users.find(x => x.user === u)) { regErr = 'Käyttäjätunnus on jo käytössä.'; render(); return; }
-  users.push({ user: u, pass: p });
-  saveUsers(users);
-  showRegister = false; loggedIn = true; currentUser = u; render();
+  var u=(document.getElementById('ru').value||'').trim();
+  var p=(document.getElementById('rp').value||'');
+  var p2=(document.getElementById('rp2').value||'');
+  if(!u){ regErr='Kirjoita käyttäjätunnus.'; render(); return; }
+  if(u===ADMIN_USER){ regErr='Tämä käyttäjätunnus ei ole saatavilla.'; render(); return; }
+  if(p.length<4){ regErr='Salasanan pitää olla vähintään 4 merkkiä.'; render(); return; }
+  if(p!==p2){ regErr='Salasanat eivät täsmää.'; render(); return; }
+  var users=getUsers();
+  if(users.find(function(x){ return x.user===u; })){ regErr='Käyttäjätunnus on jo käytössä.'; render(); return; }
+  users.push({user:u,pass:p}); saveUsers(users);
+  showRegister=false; loggedIn=true; currentUser=u; render();
 }
-
-function switchToRegister() { showLogin = false; showRegister = true; regErr = ''; render(); }
-function switchToLogin() { showRegister = false; showLogin = true; loginErr = ''; render(); }
 
 async function save() {
   try {
     await fetch(BIN_URL, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Master-Key': '$2a$10$ieSSnU4KK.dFnBkxCzLyD.s.mZW0RDCbSd20QRgRpRC8IxM99/rLi',
-        'X-Access-Key': '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm'
-      },
-      body: JSON.stringify({ articles, nextId, users: window._users || [], pending: window._pending || [] })
+      method:'PUT',
+      headers:HEADERS,
+      body:JSON.stringify({articles:articles,nextId:nextId,users:window._users||[],pending:window._pending||[]})
     });
-  } catch(e) { console.warn('Tallennus epäonnistui:', e); }
+  } catch(e){ console.warn('Tallennus epäonnistui:',e); }
 }
 
 async function load() {
   try {
-    const res = await fetch(BIN_URL, {
-      headers: {
-        'X-Master-Key': '$2a$10$ieSSnU4KK.dFnBkxCzLyD.s.mZW0RDCbSd20QRgRpRC8IxM99/rLi',
-        'X-Access-Key': '$2a$10$NUFpG7.Sc3phFIHRuPo/sezxgyB46SwsYFUuyQE4uye7FkZr0WDLm'
-      }
-    });
-    const d = await res.json();
-    articles        = d.record.articles || [];
-    nextId          = d.record.nextId   || 1;
-    window._users   = d.record.users    || [];
-    window._pending = d.record.pending  || [];
-  } catch(e) { articles = []; nextId = 1; }
+    var res=await fetch(BIN_URL,{headers:HEADERS});
+    var d=await res.json();
+    articles=d.record.articles||[];
+    nextId=d.record.nextId||1;
+    window._users=d.record.users||[];
+    window._pending=d.record.pending||[];
+  } catch(e){ articles=[]; nextId=1; }
 }
 
-load().then(render).catch(() => render());
+load().then(render).catch(function(){ render(); });
 </script>
 </body>
 </html>
