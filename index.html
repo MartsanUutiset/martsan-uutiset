@@ -99,6 +99,21 @@ body{background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georg
 .pwa-install-btn:hover{background:var(--red)}
 .pwa-dismiss{background:none;border:none;color:var(--muted);cursor:pointer;font-size:.72rem;text-decoration:underline;font-family:'Source Serif 4',serif}
 
+/* Latausnapit */
+.dl-bar{background:var(--ink);padding:.6rem 1.5rem;display:flex;justify-content:center;align-items:center;gap:.7rem;flex-wrap:wrap}
+.dl-bar-label{font-family:'Bebas Neue',sans-serif;font-size:.72rem;letter-spacing:.15em;color:#e8c070}
+.dl-btn{background:var(--paper);color:var(--ink);border:none;padding:.32rem .9rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:.1em;display:flex;align-items:center;gap:.35rem;transition:background .15s,color .15s}
+.dl-btn:hover{background:var(--red);color:#fff}
+
+/* Asennusohje-modal */
+.install-modal-bg{position:fixed;inset:0;background:rgba(26,18,8,.7);z-index:400;display:flex;align-items:center;justify-content:center}
+.install-modal{background:var(--paper);border:2px solid var(--rule);padding:1.8rem;width:340px;max-width:92vw;box-shadow:6px 6px 0 var(--rule)}
+.install-modal h2{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;margin-bottom:.8rem;border-bottom:1px solid var(--rule);padding-bottom:.4rem}
+.install-modal ol{padding-left:1.2rem;font-size:.85rem;line-height:1.9;color:#2c2416}
+.install-modal ol li{margin-bottom:.2rem}
+.install-modal .close-install{margin-top:1.2rem;background:var(--ink);color:var(--paper);border:none;padding:.45rem 1.4rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.88rem;letter-spacing:.12em}
+.install-modal .close-install:hover{background:var(--red)}
+
 footer{border-top:4px double var(--rule);padding:.9rem 1.5rem;display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);letter-spacing:.06em}
 @media(max-width:650px){
   .grid{grid-template-columns:1fr}
@@ -131,6 +146,7 @@ let confirmPending = null;
 let tapCount = 0, tapTimer = null;
 let deferredPrompt = null;
 let showPwaBar = false;
+let installModal = null; // 'android' | 'windows' | 'mac' | null
 
 // PWA: kuuntele asennustapahtuma
 window.addEventListener('beforeinstallprompt', e => {
@@ -258,7 +274,28 @@ function render() {
       </div>
     </div>` : '';
 
-  const pwaBarHtml = showPwaBar ? `
+  const installInstructions = {
+    android: { title: '📱 Asenna Androidille', steps: ['Avaa sivu <b>Chrome</b>-selaimella', 'Paina oikeassa yläkulmassa <b>kolme pistettä ⋮</b>', 'Valitse <b>"Lisää aloitusnäytölle"</b>', 'Paina <b>"Lisää"</b> — valmis!'] },
+    windows: { title: '🖥 Asenna Windowsille', steps: ['Avaa sivu <b>Chrome</b>- tai <b>Edge</b>-selaimella', 'Paina osoitepalkin oikeassa reunassa olevaa <b>asennuskuvaketta ⊕</b>', 'Jos ei näy: paina <b>kolme pistettä ⋮</b> → <b>"Asenna Martsan Uutiset"</b>', 'Paina <b>"Asenna"</b> — valmis!'] },
+    mac: { title: '🍎 Asenna Macille', steps: ['Avaa sivu <b>Chrome</b>-selaimella (ei Safari)', 'Paina osoitepalkin oikeassa reunassa olevaa <b>asennuskuvaketta ⊕</b>', 'Jos ei näy: paina <b>kolme pistettä ⋮</b> → <b>"Asenna Martsan Uutiset"</b>', 'Paina <b>"Asenna"</b> — valmis!', '<i>Safarilla: paina jakamispainike → "Lisää Dockiin"</i>'] }
+  };
+
+  const installModalHtml = installModal ? `
+    <div class="install-modal-bg" id="install-modal-bg">
+      <div class="install-modal">
+        <h2>${installInstructions[installModal].title}</h2>
+        <ol>${installInstructions[installModal].steps.map(s => `<li>${s}</li>`).join('')}</ol>
+        <button class="close-install" id="close-install-btn">Sulje</button>
+      </div>
+    </div>` : '';
+
+  const dlBarHtml = `
+    <div class="dl-bar">
+      <span class="dl-bar-label">Asenna sovellus:</span>
+      <button class="dl-btn" id="dl-android">📱 Android</button>
+      <button class="dl-btn" id="dl-windows">🖥 Windows</button>
+      <button class="dl-btn" id="dl-mac">🍎 Mac</button>
+    </div>`;
     <div class="pwa-bar">
       <span>📰 Asenna Martsan Uutiset sovelluksena laitteellesi</span>
       <button class="pwa-install-btn" id="pwa-install-btn">⬇ Asenna sovellus</button>
@@ -361,12 +398,14 @@ function render() {
   app.className = (admin || isModerator(currentUser)) ? 'admin-on' : (loggedIn ? 'logged-in' : '');
 
   app.innerHTML = `
+    ${installModalHtml}
     ${confirmHtml}
     ${inboxHtml}
     ${modHtml}
     ${loginHtml}
     ${pwaBarHtml}
     ${adminBarHtml}
+    ${dlBarHtml}
     <div class="masthead">
       <span>Perustettu 2026</span>
       <span style="flex:1;text-align:center">★ Luotettavaa uutisointia joka viikko ★</span>
@@ -407,6 +446,18 @@ function attachEvents() {
     }
   });
   if (cno) cno.addEventListener('click', () => { confirmPending = null; render(); });
+
+  // Latausnapit
+  const dlAndroid = document.getElementById('dl-android');
+  const dlWindows = document.getElementById('dl-windows');
+  const dlMac = document.getElementById('dl-mac');
+  const closeInstall = document.getElementById('close-install-btn');
+  const installBg = document.getElementById('install-modal-bg');
+  if (dlAndroid) dlAndroid.addEventListener('click', () => { installModal = 'android'; render(); });
+  if (dlWindows) dlWindows.addEventListener('click', () => { installModal = 'windows'; render(); });
+  if (dlMac) dlMac.addEventListener('click', () => { installModal = 'mac'; render(); });
+  if (closeInstall) closeInstall.addEventListener('click', () => { installModal = null; render(); });
+  if (installBg) installBg.addEventListener('click', e => { if (e.target === installBg) { installModal = null; render(); } });
 
   // PWA napit
   const pwaBtn = document.getElementById('pwa-install-btn');
