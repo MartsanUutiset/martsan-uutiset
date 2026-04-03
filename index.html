@@ -103,7 +103,28 @@ body{background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georg
 .dl-dropdown button:hover{background:var(--red)}
 .skeleton{background:linear-gradient(90deg,#e8e0d0 25%,#f0e8d8 50%,#e8e0d0 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:2px;display:block;margin-bottom:.5rem}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-.loading-screen{position:fixed;inset:0;background:var(--paper);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;transition:opacity .5s ease}
+.comments-section{max-width:680px;margin:1.5rem auto 0;padding:0 1.2rem}
+.comments-title{font-family:'Bebas Neue',sans-serif;font-size:.75rem;letter-spacing:.2em;color:var(--red);border-bottom:2px solid var(--red);padding-bottom:.2rem;margin-bottom:.8rem}
+.comment{padding:.6rem 0;border-bottom:1px dashed #c8bba0;position:relative}
+.comment:last-child{border-bottom:none}
+.comment-author{font-size:.65rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.2rem}
+.comment-body{font-size:.82rem;color:#2c2416;line-height:1.5}
+.comment-del{background:var(--red);color:#fff;border:none;cursor:pointer;font-size:.6rem;padding:.15rem .4rem;position:absolute;top:.6rem;right:0;display:none}
+.admin-on .comment-del{display:block}
+.comment-form{margin-top:.8rem;display:flex;gap:.5rem;align-items:flex-end}
+.comment-form textarea{flex:1;background:var(--cream);border:1px solid #b0a090;padding:.4rem .55rem;font-family:'Source Serif 4',serif;font-size:.82rem;color:var(--ink);outline:none;resize:none;height:2.6rem;transition:border-color .15s}
+.comment-form textarea:focus{border-color:var(--red)}
+.comment-form button{background:var(--ink);color:var(--paper);border:none;padding:.4rem .9rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.78rem;letter-spacing:.1em;white-space:nowrap}
+.comment-form button:hover{background:var(--red)}
+.msg-modal{background:var(--paper);border:2px solid var(--rule);padding:2rem;width:420px;max-width:95vw;box-shadow:6px 6px 0 var(--rule);max-height:80vh;overflow-y:auto}
+.msg-modal h2{font-family:'Playfair Display',serif;font-size:1.2rem;font-weight:900;margin-bottom:.8rem;border-bottom:1px solid var(--rule);padding-bottom:.4rem}
+.msg-item{padding:.6rem 0;border-bottom:1px dashed #c8bba0;position:relative}
+.msg-item:last-child{border-bottom:none}
+.msg-meta{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:.2rem}
+.msg-text{font-size:.82rem;color:#2c2416;line-height:1.5}
+.msg-del{background:var(--red);color:#fff;border:none;cursor:pointer;font-size:.6rem;padding:.15rem .4rem;position:absolute;top:.6rem;right:0}
+.send-msg-btn{background:none;border:1px solid var(--muted);color:var(--muted);padding:.3rem .8rem;cursor:pointer;font-family:'Source Serif 4',serif;font-size:.7rem;margin-left:.5rem}
+.send-msg-btn:hover{border-color:var(--red);color:var(--red)}inset:0;background:var(--paper);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.2rem;transition:opacity .5s ease}
 .loading-screen.fade-out{opacity:0;pointer-events:none}
 .loading-logo{font-family:'Playfair Display',serif;font-size:clamp(2.5rem,8vw,5rem);font-weight:900;line-height:.9;text-align:center}
 .loading-logo em{font-style:italic;color:var(--red)}
@@ -148,6 +169,7 @@ var page = 'front', openId = null;
 var showLogin = false, loginErr = '';
 var showRegister = false, regErr = '';
 var showEditor = false, showModPanel = false, showInbox = false;
+var showMessages = false, showSendMsg = false;
 var confirmPending = null;
 var tapCount = 0, tapTimer = null;
 var deferredPrompt = null;
@@ -230,11 +252,30 @@ function render() {
     loginHtml = '<div class="modal-bg"><div class="modal"><h2>Luo tunnus</h2><p>Luo oma k\u00e4ytt\u00e4j\u00e4tunnus Martsan Uutisiin</p><label>K\u00e4ytt\u00e4j\u00e4tunnus</label><input id="ru" type="text" placeholder="k\u00e4ytt\u00e4j\u00e4tunnus"><label>Salasana</label><input id="rp" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"><label>Salasana uudelleen</label><input id="rp2" type="password" placeholder="\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022"><div class="modal-err">' + esc(regErr) + '</div><div class="modal-btns"><button class="btn-primary" id="rbtn">Luo tunnus</button><button class="btn-secondary" id="rcbtn">Peruuta</button></div><p style="margin-top:1rem;font-size:.72rem;color:var(--muted);border:none;padding:0">Onko jo tunnus? <span id="go-login" style="color:var(--red);cursor:pointer;text-decoration:underline">Kirjaudu</span></p></div></div>';
   }
 
-  var adminBarHtml = '';
+  var msgsHtml = '';
+  if (showMessages && isAdmin) {
+    var msgs = window._messages || [];
+    var mRows = msgs.length === 0 ? '<p style="font-size:.8rem;color:var(--muted);font-style:italic">Ei viestej\u00e4.</p>'
+      : msgs.map(function(m) {
+        return '<div class="msg-item">'
+          + '<div class="msg-meta">' + esc(m.from) + ' \u00b7 ' + esc(m.date) + '</div>'
+          + '<div class="msg-text">' + esc(m.text) + '</div>'
+          + '<button class="msg-del" id="msg-del-' + m.id + '">\u2715</button>'
+          + '</div>';
+      }).join('');
+    msgsHtml = '<div class="modal-bg"><div class="msg-modal"><h2>Viestit (' + msgs.length + ')</h2>' + mRows + '<div style="margin-top:1rem"><button class="btn-secondary" id="close-msgs-btn">Sulje</button></div></div></div>';
+  }
+
+  var sendMsgHtml = '';
+  if (showSendMsg && loggedIn && !isAdmin) {
+    sendMsgHtml = '<div class="modal-bg"><div class="modal"><h2>L\u00e4het\u00e4 viesti</h2><p>Yksityinen viesti pää\u00e4k\u00e4ytt\u00e4j\u00e4lle</p><label>Viesti</label><textarea id="msg-text" style="width:100%;background:var(--cream);border:1px solid #b0a090;padding:.45rem .6rem;font-family:\'Source Serif 4\',serif;font-size:.88rem;color:var(--ink);outline:none;resize:vertical;min-height:90px;margin-bottom:.9rem"></textarea><div class="modal-btns"><button class="btn-primary" id="send-msg-btn">L\u00e4het\u00e4</button><button class="btn-secondary" id="cancel-msg-btn">Peruuta</button></div></div></div>';
+  }
   if (isAdmin || isModUser) {
     var inboxCount = (window._pending||[]).length;
+    var msgCount = (window._messages||[]).length;
     adminBarHtml = '<div class="admin-bar"><span>' + (isAdmin ? 'HALLINTAMOODI' : 'MODERAATTORI') + ' P\u00c4\u00c4LL\u00c4</span>'
       + (isAdmin ? '<button id="open-inbox-btn">Saapuneet' + (inboxCount > 0 ? ' (' + inboxCount + ')' : '') + '</button>' : '')
+      + (isAdmin ? '<button id="open-msgs-btn">Viestit' + (msgCount > 0 ? ' (' + msgCount + ')' : '') + '</button>' : '')
       + (isAdmin ? '<button id="open-mod-btn">Hallitse k\u00e4ytt\u00e4ji\u00e4</button>' : '')
       + '<button id="exit-admin-btn">Kirjaudu ulos</button></div>';
   }
@@ -266,7 +307,8 @@ function render() {
         + '<div class="art-body">' + body + '</div>'
         + '<hr class="art-end">'
         + '<button class="art-del-btn" id="art-del-btn" data-id="' + a.id + '">Poista artikkeli</button>'
-        + '</div>';
+        + '</div>'
+        + buildComments(a.id);
     }
   } else {
     function renderCol(col) {
@@ -316,9 +358,26 @@ function render() {
       + '</div></div>' + editorHtml;
   }
 
+  function buildComments(articleId) {
+    var all = (window._comments||[]).filter(function(c){ return c.articleId === articleId; });
+    var rows = all.map(function(c){
+      return '<div class="comment">'
+        + '<div class="comment-author">' + esc(c.author) + ' \u00b7 ' + esc(c.date) + '</div>'
+        + '<div class="comment-body">' + esc(c.text) + '</div>'
+        + '<button class="comment-del" id="cdel-' + c.id + '">\u2715</button>'
+        + '</div>';
+    }).join('');
+    var form = loggedIn
+      ? '<div class="comment-form"><textarea id="comment-input" placeholder="Kirjoita kommentti\u2026"></textarea><button id="comment-submit" data-artid="' + articleId + '">L\u00e4het\u00e4</button></div>'
+      : '<p style="font-size:.72rem;color:var(--muted);font-style:italic;margin-top:.6rem">Kirjaudu sis\u00e4\u00e4n kommentoidaksesi.</p>';
+    return '<div class="comments-section"><div class="comments-title">Kommentit (' + all.length + ')</div>' + rows + form + '</div>';
+  }
+
   var n = articles.length;
   var footerUser = loggedIn
-    ? '<span>Kirjautunut: ' + esc(currentUser) + (isModUser && !isAdmin ? ' \u2605' : '') + ' &nbsp;\u00b7&nbsp; <span id="logout-btn" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu ulos</span></span>'
+    ? '<span>Kirjautunut: ' + esc(currentUser) + (isModUser && !isAdmin ? ' \u2605' : '') + ' &nbsp;\u00b7&nbsp; '
+      + (!isAdmin ? '<span id="open-send-msg-btn" class="send-msg-btn" style="cursor:pointer">Viesti martsalle</span> &nbsp;\u00b7&nbsp; ' : '')
+      + '<span id="logout-btn" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu ulos</span></span>'
     : '<span><span id="atrig" style="cursor:default;user-select:none">toimitus@martsanuutiset.fi</span> &nbsp;\u00b7&nbsp; <span id="login-link" style="cursor:pointer;text-decoration:underline;color:var(--red)">Kirjaudu / Luo tunnus</span></span>';
 
   app.className = (isAdmin || isModUser) ? 'admin-on' : (loggedIn ? 'logged-in' : '');
@@ -327,7 +386,7 @@ function render() {
     ? '<span>' + dateFI() + '</span>'
     : '<span style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem"><button class="masthead-login" id="masthead-login-btn">Kirjaudu</button><span>' + dateFI() + '</span></span>';
 
-  app.innerHTML = confirmHtml + inboxHtml + modHtml + loginHtml + adminBarHtml + dlHtml
+  app.innerHTML = confirmHtml + msgsHtml + sendMsgHtml + inboxHtml + modHtml + loginHtml + adminBarHtml + dlHtml
     + '<div class="masthead"><span>Perustettu 2026</span><span style="flex:1;text-align:center">\u2605 Luotettavaa uutisointia joka viikko \u2605</span>' + mastheadRight + '</div>'
     + '<div class="nameplate" id="nameplate"><h1>Martsan <em>Uutiset</em></h1><div class="np-rule"><span>Viikon t\u00e4rkeimm\u00e4t uutiset \u2014 Totuus ennen kaikkea</span></div><p class="tagline">"Kaikki mit\u00e4 sinun tarvitsee tiet\u00e4\u00e4 \u2014 ja hieman enemm\u00e4n"</p></div>'
     + '<div class="ticker"><span class="ticker-label">UUTISET NYT</span><span class="ticker-inner">' + tickerItems + ' &nbsp;\u2b26&nbsp; </span></div>'
@@ -393,9 +452,48 @@ function attachEvents() {
   var rp2=document.getElementById('rp2');
   if(rp2) rp2.addEventListener('keydown', function(e){ if(e.key==='Enter') doRegister(); });
 
-  function fullLogout(){ admin=false; loggedIn=false; currentUser=''; showEditor=false; showInbox=false; showModPanel=false; render(); }
+  function fullLogout(){ admin=false; loggedIn=false; currentUser=''; showEditor=false; showInbox=false; showModPanel=false; showMessages=false; showSendMsg=false; render(); }
   on('exit-admin-btn', fullLogout);
   on('logout-btn', fullLogout);
+
+  on('open-msgs-btn',   function(){ showMessages=true; render(); });
+  on('close-msgs-btn',  function(){ showMessages=false; render(); });
+  on('open-send-msg-btn', function(){ showSendMsg=true; render(); });
+  on('cancel-msg-btn',  function(){ showSendMsg=false; render(); });
+  on('send-msg-btn', function(){
+    var txt=(document.getElementById('msg-text').value||'').trim();
+    if(!txt) return;
+    window._messages=window._messages||[];
+    window._messages.push({id:Date.now(), from:currentUser, text:txt, date:todayFI()});
+    showSendMsg=false; save();
+    alert('Viesti l\u00e4hetetty!');
+    render();
+  });
+  (window._messages||[]).forEach(function(m){
+    on('msg-del-'+m.id, function(){
+      window._messages=window._messages.filter(function(x){ return x.id!==m.id; });
+      save(); render();
+    });
+  });
+
+  on('comment-submit', function(){
+    var inp=document.getElementById('comment-input');
+    var btn=document.getElementById('comment-submit');
+    if(!inp||!btn) return;
+    var txt=inp.value.trim();
+    var artId=parseInt(btn.dataset.artid);
+    if(!txt) return;
+    window._comments=window._comments||[];
+    window._comments.push({id:Date.now(), articleId:artId, author:currentUser, text:txt, date:todayFI()});
+    save(); render();
+  });
+  document.querySelectorAll('[id^="cdel-"]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var id=parseInt(btn.id.replace('cdel-',''));
+      window._comments=(window._comments||[]).filter(function(c){ return c.id!==id; });
+      save(); render();
+    });
+  });
 
   on('open-inbox-btn',  function(){ showInbox=true; render(); });
   on('close-inbox-btn', function(){ showInbox=false; render(); });
@@ -501,7 +599,11 @@ function doRegister() {
 
 async function save() {
   try {
-    await fetch(BIN_URL,{method:'PUT',headers:HEADERS,body:JSON.stringify({articles:articles,nextId:nextId,users:window._users||[],pending:window._pending||[]})});
+    await fetch(BIN_URL,{method:'PUT',headers:HEADERS,body:JSON.stringify({
+      articles:articles, nextId:nextId,
+      users:window._users||[], pending:window._pending||[],
+      messages:window._messages||[], comments:window._comments||[]
+    })});
   } catch(e){ console.warn('Tallennus ep\u00e4onnistui:',e); }
 }
 
@@ -513,6 +615,8 @@ async function load() {
     nextId=d.record.nextId||1;
     window._users=d.record.users||[];
     window._pending=d.record.pending||[];
+    window._messages=d.record.messages||[];
+    window._comments=d.record.comments||[];
     dataLoaded=true;
   } catch(e){ articles=[]; nextId=1; dataLoaded=true; }
 }
