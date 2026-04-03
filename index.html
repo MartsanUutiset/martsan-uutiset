@@ -111,144 +111,31 @@ body{background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georg
 .loading-rule::before,.loading-rule::after{content:'';flex:1;height:1px;background:var(--rule)}
 .loading-rule span{font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 .loading-bar{width:min(200px,60vw);height:2px;background:#ddd;overflow:hidden}
+.loading-bar-inner{height:100%;background:var(--red);animation:loadbar 1.4s ease-in-out infinite}
+@keyframes loadbar{0%{width:0%;margin-left:0}50%{width:60%;margin-left:20%}100%{width:0%;margin-left:100%}}padding:.9rem 1.5rem;display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);letter-spacing:.06em}
 .loading-bar-inner{height:100%;background:var(--red);width:0%;transition:width .05s linear}
 .loading-bar-inner.go{width:100%;transition:width 1.4s cubic-bezier(.4,0,.2,1)}padding:.9rem 1.5rem;display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);letter-spacing:.06em}
-.loading-bar-inner.go{width:100%;transition:width 1.4s cubic-bezier(.4,0,.2,1)}
-footer{border-top:4px double var(--rule);padding:.4rem 1.5rem;display:flex;justify-content:space-between;align-items:center;font-size:.58rem;color:var(--muted);letter-spacing:.06em}
-.masthead-login{background:var(--red);color:#fff;border:none;padding:.15rem .6rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.62rem;letter-spacing:.1em}
-.masthead-login:hover{background:var(--rule)}
 @media(max-width:650px){
 .grid{grid-template-columns:1fr}
 .divider{display:none}
-@@ -320,8 +323,12 @@
-
-app.className = (isAdmin || isModUser) ? 'admin-on' : (loggedIn ? 'logged-in' : '');
-
-  var mastheadRight = loggedIn
-    ? '<span>' + dateFI() + '</span>'
-    : '<span style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem"><button class="masthead-login" id="masthead-login-btn">Kirjaudu</button><span>' + dateFI() + '</span></span>';
-
-app.innerHTML = confirmHtml + inboxHtml + modHtml + loginHtml + adminBarHtml + dlHtml
-    + '<div class="masthead"><span>Perustettu 2026</span><span style="flex:1;text-align:center">\u2605 Luotettavaa uutisointia joka viikko \u2605</span><span>' + dateFI() + '</span></div>'
-    + '<div class="masthead"><span>Perustettu 2026</span><span style="flex:1;text-align:center">\u2605 Luotettavaa uutisointia joka viikko \u2605</span>' + mastheadRight + '</div>'
-+ '<div class="nameplate" id="nameplate"><h1>Martsan <em>Uutiset</em></h1><div class="np-rule"><span>Viikon t\u00e4rkeimm\u00e4t uutiset \u2014 Totuus ennen kaikkea</span></div><p class="tagline">"Kaikki mit\u00e4 sinun tarvitsee tiet\u00e4\u00e4 \u2014 ja hieman enemm\u00e4n"</p></div>'
-+ '<div class="ticker"><span class="ticker-label">UUTISET NYT</span><span class="ticker-inner">' + tickerItems + ' &nbsp;\u2b26&nbsp; </span></div>'
-+ mainHtml
-@@ -412,135 +419,136 @@
-});
-});
-
-  on('masthead-login-btn', function(){ showLogin=true; loginErr=''; render(); });
-on('login-link', function(){ showLogin=true; loginErr=''; render(); });
-on('nameplate',  function(){ page='front'; render(); });
-
-var atrig=document.getElementById('atrig');
-if(atrig) atrig.addEventListener('click', function(){
-tapCount++;
-clearTimeout(tapTimer);
-if(tapCount>=5){ tapCount=0; showLogin=true; loginErr=''; render(); }
-else tapTimer=setTimeout(function(){ tapCount=0; },2000);
-});
-
-on('back-btn', function(){ page='front'; render(); });
-
-var artDel=document.getElementById('art-del-btn');
-if(artDel) artDel.addEventListener('click', function(){ confirmPending={id:parseInt(artDel.dataset.id),goBack:true}; render(); });
-
-document.querySelectorAll('[data-open]').forEach(function(el){
-el.addEventListener('click', function(e){
-if(e.target.closest('[data-del]')) return;
-page='article'; openId=parseInt(el.dataset.open); render();
-});
-});
-document.querySelectorAll('[data-del]').forEach(function(btn){
-btn.addEventListener('click', function(e){
-e.stopPropagation();
-confirmPending={id:parseInt(btn.dataset.del),goBack:false}; render();
-});
-});
-
-on('add-btn',    function(){ showEditor=!showEditor; render(); });
-on('cancel-btn', function(){ showEditor=false; render(); });
-
-on('pub-btn', function(){
-var title=(document.getElementById('ft').value||'').trim();
-var body=(document.getElementById('fb').value||'').trim();
-if(!title){ alert('Kirjoita otsikko.'); return; }
-if(!body){ alert('Kirjoita teksti.'); return; }
-var id=nextId++;
-var article={
-id:id, title:title,
-author:(document.getElementById('fa').value||'').trim(),
-section:(document.getElementById('fs').value||'').trim(),
-column:document.getElementById('fc').value,
-body:body, date:todayFI()
-};
-if(admin||isMod(currentUser)){
-articles.push(article); showEditor=false; save(); page='article'; openId=id;
-} else {
-window._pending=window._pending||[];
-window._pending.push(article); showEditor=false; save();
-alert('Artikkeli l\u00e4hetetty tarkastettavaksi!');
-}
-render();
-});
-}
-
-function doLogin() {
-var u=(document.getElementById('lu').value||'').trim();
-var p=(document.getElementById('lp').value||'');
-if(u===ADMIN_USER&&p===ADMIN_PASS){ showLogin=false; admin=true; loggedIn=true; currentUser=u; render(); return; }
-var match=getUsers().find(function(x){ return x.user===u&&x.pass===p; });
-if(match){ showLogin=false; loggedIn=true; currentUser=u; render(); return; }
-loginErr='V\u00e4\u00e4r\u00e4 k\u00e4ytt\u00e4j\u00e4tunnus tai salasana.'; render();
-}
-
-function doRegister() {
-var u=(document.getElementById('ru').value||'').trim();
-var p=(document.getElementById('rp').value||'');
-var p2=(document.getElementById('rp2').value||'');
-if(!u){ regErr='Kirjoita k\u00e4ytt\u00e4j\u00e4tunnus.'; render(); return; }
-if(u===ADMIN_USER){ regErr='T\u00e4m\u00e4 k\u00e4ytt\u00e4j\u00e4tunnus ei ole saatavilla.'; render(); return; }
-if(p.length<4){ regErr='Salasanan pit\u00e4\u00e4 olla v\u00e4hint\u00e4\u00e4n 4 merkki\u00e4.'; render(); return; }
-if(p!==p2){ regErr='Salasanat eiv\u00e4t t\u00e4sm\u00e4\u00e4.'; render(); return; }
-var users=getUsers();
-if(users.find(function(x){ return x.user===u; })){ regErr='K\u00e4ytt\u00e4j\u00e4tunnus on jo k\u00e4yt\u00f6ss\u00e4.'; render(); return; }
-users.push({user:u,pass:p}); saveUsers(users);
-showRegister=false; loggedIn=true; currentUser=u; render();
-}
-
-async function save() {
-try {
-await fetch(BIN_URL,{method:'PUT',headers:HEADERS,body:JSON.stringify({articles:articles,nextId:nextId,users:window._users||[],pending:window._pending||[]})});
-} catch(e){ console.warn('Tallennus ep\u00e4onnistui:',e); }
-}
-
-async function load() {
-try {
-var res=await fetch(BIN_URL,{headers:HEADERS});
-var d=await res.json();
-articles=d.record.articles||[];
-nextId=d.record.nextId||1;
-window._users=d.record.users||[];
-window._pending=d.record.pending||[];
-dataLoaded=true;
-} catch(e){ articles=[]; nextId=1; dataLoaded=true; }
+@@ -510,17 +510,36 @@
 }
 
 render();
+load().then(function(){
+  render();
 
 // Käynnistä latauspalkki heti
 setTimeout(function(){
-var bar = document.querySelector('.loading-bar-inner');
-if(bar) bar.classList.add('go');
+  var bar = document.querySelector('.loading-bar-inner');
+  if(bar) bar.classList.add('go');
 }, 30);
 
 var dataReady = false;
 var barDone = false;
 
 function tryHide(){
-if(!dataReady || !barDone) return;
+  if(!dataReady || !barDone) return;
 var ls = document.getElementById('loading-screen');
 if(ls){
 ls.classList.add('fade-out');
@@ -260,14 +147,15 @@ setTimeout(function(){ ls.style.display='none'; }, 500);
 setTimeout(function(){ barDone = true; tryHide(); }, 1450);
 
 load().then(function(){
-render();
-dataReady = true;
-tryHide();
+  render();
+  dataReady = true;
+  tryHide();
 }).catch(function(){
 render();
-dataReady = true;
-tryHide();
+  var ls = document.getElementById('loading-screen');
+  if(ls){ ls.classList.add('fade-out'); setTimeout(function(){ ls.style.display='none'; },500); }
+  dataReady = true;
+  tryHide();
 });
 </script>
 </body>
-</html>
