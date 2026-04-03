@@ -112,7 +112,10 @@ body{background:var(--paper);color:var(--ink);font-family:'Source Serif 4',Georg
 .loading-rule span{font-size:.55rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
 .loading-bar{width:min(200px,60vw);height:2px;background:#ddd;overflow:hidden}
 .loading-bar-inner{height:100%;background:var(--red);width:0%;transition:width .05s linear}
-.loading-bar-inner.go{width:100%;transition:width 1.4s cubic-bezier(.4,0,.2,1)}padding:.9rem 1.5rem;display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);letter-spacing:.06em}
+.loading-bar-inner.go{width:100%;transition:width 1.4s cubic-bezier(.4,0,.2,1)}
+footer{border-top:4px double var(--rule);padding:.4rem 1.5rem;display:flex;justify-content:space-between;align-items:center;font-size:.58rem;color:var(--muted);letter-spacing:.06em}
+.masthead-login{background:var(--red);color:#fff;border:none;padding:.15rem .6rem;cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:.62rem;letter-spacing:.1em}
+.masthead-login:hover{background:var(--rule)}
 @media(max-width:650px){
   .grid{grid-template-columns:1fr}
   .divider{display:none}
@@ -320,8 +323,12 @@ function render() {
 
   app.className = (isAdmin || isModUser) ? 'admin-on' : (loggedIn ? 'logged-in' : '');
 
+  var mastheadRight = loggedIn
+    ? '<span>' + dateFI() + '</span>'
+    : '<span style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem"><button class="masthead-login" id="masthead-login-btn">Kirjaudu</button><span>' + dateFI() + '</span></span>';
+
   app.innerHTML = confirmHtml + inboxHtml + modHtml + loginHtml + adminBarHtml + dlHtml
-    + '<div class="masthead"><span>Perustettu 2026</span><span style="flex:1;text-align:center">\u2605 Luotettavaa uutisointia joka viikko \u2605</span><span>' + dateFI() + '</span></div>'
+    + '<div class="masthead"><span>Perustettu 2026</span><span style="flex:1;text-align:center">\u2605 Luotettavaa uutisointia joka viikko \u2605</span>' + mastheadRight + '</div>'
     + '<div class="nameplate" id="nameplate"><h1>Martsan <em>Uutiset</em></h1><div class="np-rule"><span>Viikon t\u00e4rkeimm\u00e4t uutiset \u2014 Totuus ennen kaikkea</span></div><p class="tagline">"Kaikki mit\u00e4 sinun tarvitsee tiet\u00e4\u00e4 \u2014 ja hieman enemm\u00e4n"</p></div>'
     + '<div class="ticker"><span class="ticker-label">UUTISET NYT</span><span class="ticker-inner">' + tickerItems + ' &nbsp;\u2b26&nbsp; </span></div>'
     + mainHtml
@@ -412,6 +419,7 @@ function attachEvents() {
     });
   });
 
+  on('masthead-login-btn', function(){ showLogin=true; loginErr=''; render(); });
   on('login-link', function(){ showLogin=true; loginErr=''; render(); });
   on('nameplate',  function(){ page='front'; render(); });
 
