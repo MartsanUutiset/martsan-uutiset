@@ -430,8 +430,8 @@ function render(){
         +"<div class=\"art-byline\">"+(bl?"<span>"+bl+"</span>":"")
         +"<span class=\"art-readtime\">\ud83d\udcd6 "+rt+" "+T("readtime")+"</span>"
         +"<span class=\"art-views\">\ud83d\udc41 "+views+"</span>"
-        +"<button class=\"art-like-btn"+(liked?" liked":")+"\" id=\"art-like-btn\" data-id=\""+a.id+"\">"+(liked?"\u2665":"\u2661")+" "+likes+" "+T(liked?"liked":"like")+"</button>"
-        +"<button class=\"art-bookmark-btn"+(bm?" bookmarked":")+"\" id=\"art-bm-btn\" data-id=\""+a.id+"\">"+(bm?"\u2605 "+T("saved"):"\u2606 "+T("save"))+"</button>"
+        +"<button class=\"art-like-btn"+(liked?" liked":"")+"\" id=\"art-like-btn\" data-id=\""+a.id+"\">"+(liked?"\u2665":"\u2661")+" "+likes+" "+T(liked?"liked":"like")+"</button>"
+        +"<button class=\"art-bookmark-btn"+(bm?" bookmarked":"")+"\" id=\"art-bm-btn\" data-id=\""+a.id+"\">"+(bm?"\u2605 "+T("saved"):"\u2606 "+T("save"))+"</button>"
         +"<button class=\"art-edit-btn\" id=\"art-edit-btn\" data-id=\""+a.id+"\">\u270e "+T("edit")+"</button>"
         +"</div>"
         +mediaHtml
@@ -459,10 +459,10 @@ function render(){
         var liked=isLiked(a.id);
         var rt=readTime(a.body);
         var thumb=buildThumb(a.media||[]);
-        return "<div class=\"card"+(iL?" lead":")+"\" data-open=\""+a.id+"\">"
+        return "<div class=\"card"+(iL?" lead":"")+"\" data-open=\""+a.id+"\">"
           +"<button class=\"del-btn\" data-del=\""+a.id+"\">Poista</button>"
           +"<button class=\"edit-btn\" data-edit=\""+a.id+"\">\u270e</button>"
-          +"<button class=\"bookmark-btn"+(bm?" bookmarked":")+"\" data-bm=\""+a.id+"\">"+(bm?"\u2605":"\u2606")+"</button>"
+          +"<button class=\"bookmark-btn"+(bm?" bookmarked":"")+"\" data-bm=\""+a.id+"\">"+(bm?"\u2605":"\u2606")+"</button>"
           +(a.section?"<div class=\"cat-badge "+catCls+"\">"+esc(a.section)+"</div>":"")
           +thumb
           +"<"+tag+">"+esc(a.title)+"</"+tag+">"
@@ -471,13 +471,13 @@ function render(){
           +"<div class=\"card-meta\">"
           +"<span class=\"readtime\">\ud83d\udcd6 "+rt+" "+T("readtime")+"</span>"
           +"<span class=\"views\">\ud83d\udc41 "+views+"</span>"
-          +"<button class=\"like-btn"+(liked?" liked":")+"\" data-like=\""+a.id+"\">"+(liked?"\u2665":"\u2661")+" "+likes+"</button>"
+          +"<button class=\"like-btn"+(liked?" liked":"")+"\" data-like=\""+a.id+"\">"+(liked?"\u2665":"\u2661")+" "+likes+"</button>"
           +"</div>"
           +"<span class=\"hint\">"+T("readMore")+" \u2192</span></div>";
       }).join(col==="center"?"<hr class=\"divh\">":"");
     }
     var filterBar="<div class=\"filter-bar\"><span class=\"filter-label\">"+T("filter")+"</span>"
-      +"<button class=\"filter-btn"+(filterCat===""?" active":")+"\" id=\"fcat-all\">"+T("all")+"</button>"
+      +"<button class=\"filter-btn"+(filterCat===""?" active":"")+"\" id=\"fcat-all\">"+T("all")+"</button>"
       +CATS.map(function(c){return "<button class=\"filter-btn"+(filterCat===c?" active":"")+" "+(CAT_CLS[c]||"")+"\" id=\"fcat-"+c+"\">"+c+"</button>";}).join("")
       +"<span class=\"filter-search-wrap\"><input class=\"filter-search\" id=\"filter-search-inp\" placeholder=\""+T("search")+"\" value=\""+esc(filterSearch)+"\"></span></div>";
     var edArticle=editId?articles.find(function(a){return a.id===editId;}):null;
