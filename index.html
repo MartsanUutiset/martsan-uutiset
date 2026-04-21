@@ -685,9 +685,10 @@ function attachEvents(){
       Promise.all(uploads).then(function(items){
         pendingMedia=pendingMedia.concat(items);
         showNotif("Media ladattu! ("+pendingMedia.length+" tiedostoa)");
-        // Update only the preview, don't re-render the whole page
-        updateMediaPreview();
-      }).catch(function(){});
+        render(); // Re-render to show preview
+      }).catch(function(e){
+        showNotif("Lataus ep\u00e4onnistui.");
+      });
     });
   }
   on("add-btn",function(){showEditor=!showEditor;if(!showEditor){editId=null;pendingMedia=[];}render();});
@@ -709,20 +710,23 @@ function attachEvents(){
       }
       showEditor=false;editId=null;pendingMedia=[];save();showNotif("Artikkeli p\u00e4ivitetty!");render();return;
     }
+    // Capture media NOW before any async/render calls
+    var capturedMedia=pendingMedia.slice();
     var id=nextId++;
-    var art={id:id,title:title,author:(document.getElementById("fa").value||"").trim(),section:(document.getElementById("fs").value||""),column:document.getElementById("fc").value,body:body,date:todayFI(),media:pendingMedia.slice()};
+    var art={id:id,title:title,author:(document.getElementById("fa").value||"").trim(),section:(document.getElementById("fs").value||""),column:document.getElementById("fc").value,body:body,date:todayFI(),media:capturedMedia};
     var authH=_authSB();
     if(admin){
-      fetch(SUPABASE_URL+"/rest/v1/articles",{method:"POST",headers:Object.assign({},authH,{"Prefer":"return=representation"}),body:JSON.stringify({title:art.title,author:art.author,section:art.section,col:art.column,body:art.body,media:JSON.stringify(art.media||[])})})
+      fetch(SUPABASE_URL+"/rest/v1/articles",{method:"POST",headers:Object.assign({},authH,{"Prefer":"return=representation"}),body:JSON.stringify({title:art.title,author:art.author,section:art.section,col:art.column,body:art.body,media:JSON.stringify(capturedMedia)})})
         .then(function(r){return r.json();}).then(function(rows){
           if(rows&&rows[0]){art.id=rows[0].id;}
           articles.push(art);showEditor=false;pendingMedia=[];page="article";openId=art.id;trackView(art.id);render();
-        });
+        }).catch(function(e){errorMsg="Julkaisu ep\u00e4onnistui.";render();});
     } else {
-      fetch(SUPABASE_URL+"/rest/v1/pending",{method:"POST",headers:authH,body:JSON.stringify({title:art.title,author:art.author,section:art.section,col:art.column,body:art.body,submitted_by:currentUser})})
-        .then(function(){window._pending=window._pending||[];window._pending.push(art);showEditor=false;pendingMedia=[];showNotif(T("approved"));render();});
+      fetch(SUPABASE_URL+"/rest/v1/pending",{method:"POST",headers:authH,body:JSON.stringify({title:art.title,author:art.author,section:art.section,col:art.column,body:art.body,media:JSON.stringify(capturedMedia),submitted_by:currentUser})})
+        .then(function(){window._pending=window._pending||[];window._pending.push(art);showEditor=false;pendingMedia=[];showNotif(T("approved"));render();})
+        .catch(function(e){errorMsg="L\u00e4hetys ep\u00e4onnistui.";render();});
     }
-    render();
+    // Don't call render() here - wait for async to complete
   });
 }
 
