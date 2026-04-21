@@ -354,14 +354,11 @@ var syncTimer=null,errorMsg="",lang="fi";
 var pendingMedia=[];
 
 // Käyttäjien tallennus paikallisesti (ei tarvita Supabasea peruskäyttäjille)
-function getUsers(){
-  try{return JSON.parse(localStorage.getItem("mu_users")||"[]");}catch(e){return[];}
-}
+function getUsers(){return window._localUsers||[];}
 function saveUsers(u){
-  try{localStorage.setItem("mu_users",JSON.stringify(u));}catch(e){}
-  save();
+  window._localUsers=u;
+  // Ei tallenneta erikseen — load() hakee ne
 }
-
 window.addEventListener("beforeinstallprompt",function(e){e.preventDefault();deferredPrompt=e;});
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){});});}
 
@@ -1013,12 +1010,20 @@ function doRegister(){
   if(p!==p2){regErr="Salasanat eivät täsmää.";render();return;}
   var users=getUsers();
   if(users.find(function(x){return x.user===u;})){regErr="Käyttäjätunnus on jo käytössä.";render();return;}
-  users.push({user:u,pass:p,moderator:false,canPublishDirect:false,date:todayFI()});
-  saveUsers(users);
-  showRegister=false;showNotif("Tunnus luotu! Kirjaudu sisään.");
-  showLogin=true;loginErr="";render();
+  fetch(SUPABASE_URL+"/rest/v1/local_users",{
+    method:"POST",headers:Object.assign({},SB,{"Prefer":"return=minimal"}),
+    body:JSON.stringify({username:u,pass:p})
+  }).then(function(r){
+    if(r.ok){
+      window._localUsers=window._localUsers||[];
+      window._localUsers.push({user:u,pass:p,moderator:false,canPublishDirect:false});
+      showRegister=false;showNotif("Tunnus luotu! Kirjaudu sisään.");
+      showLogin=true;loginErr="";render();
+    } else {
+      regErr="Rekisteröinti epäonnistui.";render();
+    }
+  }).catch(function(){regErr="Rekisteröinti epäonnistui.";render();});
 }
-
 function sbToArt(r){return {id:r.id,title:r.title,author:r.author||"",section:r.section||"",column:r.col||"center",body:r.body,date:r.created_at?r.created_at.substring(0,10):"",media:r.media?JSON.parse(r.media):[]};}
 var _authSB=function(){return Object.assign({},SB,{Authorization:"Bearer "+(window._sbToken||SUPABASE_KEY),"Prefer":"return=minimal"});};
 
@@ -1027,13 +1032,15 @@ async function save(){/* Supabase: yksittäiset operaatiot tallentavat suoraan *
 async function load(){
   try{
     var h=SB;
-    var results=await Promise.all([
+   var results=await Promise.all([
       fetch(SUPABASE_URL+"/rest/v1/articles?select=*&order=id.asc",{headers:h}).then(function(r){return r.json();}),
       fetch(SUPABASE_URL+"/rest/v1/pending?select=*&order=id.asc",{headers:h}).then(function(r){return r.json();}),
       fetch(SUPABASE_URL+"/rest/v1/messages?select=*&order=id.desc",{headers:h}).then(function(r){return r.json();}),
-      fetch(SUPABASE_URL+"/rest/v1/comments?select=*&order=id.asc",{headers:h}).then(function(r){return r.json();})
+      fetch(SUPABASE_URL+"/rest/v1/comments?select=*&order=id.asc",{headers:h}).then(function(r){return r.json();}),
+      fetch(SUPABASE_URL+"/rest/v1/local_users?select=*",{headers:h}).then(function(r){return r.json();})
     ]);
-    var arts=results[0],pend=results[1],msgs=results[2],cmts=results[3];
+    var arts=results[0],pend=results[1],msgs=results[2],cmts=results[3],lusers=results[4];
+    window._localUsers=(lusers&&!lusers.error)?lusers.map(function(u){return {user:u.username,pass:u.pass,moderator:u.moderator,canPublishDirect:u.can_publish_direct};}):[];
     articles=(arts&&!arts.error)?arts.map(sbToArt):[];
     window._pending=(pend&&!pend.error)?pend.map(function(p){return {id:p.id,title:p.title,author:p.author,section:p.section,column:p.col,body:p.body,date:p.created_at?p.created_at.substring(0,10):"",media:[]};}):[];
     window._messages=(msgs&&!msgs.error)?msgs.map(function(m){return {id:m.id,from:m.from_user||"",subject:m.subject,text:m.body||"",date:m.created_at?m.created_at.substring(0,10):""};}):[];
