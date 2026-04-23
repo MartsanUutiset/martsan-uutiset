@@ -282,772 +282,236 @@ footer{border-top:4px double var(--rule);padding:.4rem 1.5rem;display:flex;justi
 </div>
 <div id="app"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-<script>
 "use strict";
+
 // ===== SUPABASE =====
-var SB_URL = "https://jjtlhmbfrjtapksynyit.supabase.co";
-var SB_KEY = "sb_publishable_YSbh6A-qu7fjMiC1xSniXA_oXz81UWC";
-var sb = supabase.createClient(SB_URL, SB_KEY);
+const SB_URL = "https://jjtlhmbfrjtapksynyit.supabase.co";
+const SB_KEY = "sb_publishable_YSbh6A-qu7fjMiC1xSniXA_oXz81UWC";
+const sb = supabase.createClient(SB_URL, SB_KEY);
 
-// ===== MEDIA HAKEMISTO =====
-// Kuvat ja videot haetaan tästä alihakemistosta
-var MEDIA_DIR = "media/";
+// ===== STATE =====
+let articles = [];
+let pending = [];
+let users = [];
+let messages = [];
+let comments = [];
+let views = {};
+let likes = [];
+let bookmarks = [];
+let videos = [];
 
-// Muunnetaan tiedostonimi poluksi
-function mediaPath(filename) {
-  if (!filename) return "";
-  filename = filename.trim();
-  // Jos alkaa jo http:// tai https://, käytetään sellaisenaan
-  if (filename.startsWith("http://") || filename.startsWith("https://")) return filename;
-  // Muuten lisätään alihakemisto
-  return MEDIA_DIR + filename;
-}
+let admin=false, loggedIn=false, cu="";
+let page="front", openId=null, editId=null;
+let showEditor=false, showVideoEditor=false;
+let errMsg="", showLogin=false;
 
-// ===== VAKIOT =====
-var AU = "martsa", AP = "weekly2026";
-var CATS = ["Urheilu","Kulttuuri","Koulu","Muut"];
-var CCL = {Urheilu:"cat-urheilu",Kulttuuri:"cat-kulttuuri",Koulu:"cat-koulu",Muut:"cat-muut"};
-var POP = 300;
-var THEMES = {red:{p:"#c0392b"},blue:{p:"#2980B9"},green:{p:"#1E8449"}};
+// ===== CONST =====
+const AU="martsa", AP="weekly2026";
 
-// ===== TILA =====
-var articles = [], admin = false, loggedIn = false, cu = "";
-var page = "front", openId = null, editId = null;
-var showLogin = false, loginErr = "", showReg = false, regErr = "";
-var showEditor = false, showMod = false, showInbox = false, showMsgs = false;
-var showSend = false, showBm = false, showLang = false, showProf = false;
-var openMsg = null, openCmt = {};
-var fCat = "", fSearch = "", msgSearch = "", uSearch = "";
-var confirmP = null, tapN = 0, tapT = null, dataLoaded = false;
-var errMsg = "", lang = "fi";
-var siteTheme = "red";
+// ===== HELPERS =====
+const today=()=>new Date().toISOString().slice(0,10);
 
-// Artikkelin kuvat muokkauksessa: [{file:"kuva.jpg", caption:"Teksti"}, ...]
-var pendImages = [];
-
-// ===== GLOBAALI DATA =====
-var gUsers = [], gPending = [], gMsgs = [], gCmts = [];
-var gViews = {}, gLikes = [], gBm = [];
-// Videot tallennetaan site_data-tauluun
-var gVideos = []; // [{id, file, title, date}]
-var showVideoEditor = false;
-
-function getUsers(){return gUsers;}
-function getPending(){return gPending;}
-function getMsgs(){return gMsgs;}
-function getCmts(){return gCmts;}
-function getViews(){return gViews;}
-function getLikes(){return gLikes;}
-function getBm(){return gBm;}
-
-// ===== TALLENNUSFUNKTIOT =====
-async function saveUsers(u){
-  gUsers = u;
-  for(var i=0;i<u.length;i++){
-    await sb.from("users").upsert(u[i], {onConflict:"user"});
-  }
-}
-async function saveViews(v){
-  gViews = v;
-  await sb.from("site_data").upsert({id:"views",data:v});
-}
-async function saveLikes(l){
-  gLikes = l;
-  await sb.from("site_data").upsert({id:"likes_"+cu,data:l});
-}
-async function saveBm(b){
-  gBm = b;
-  if(cu) await sb.from("site_data").upsert({id:"bm_"+cu,data:b});
-}
-async function saveVideos(v){
-  gVideos = v;
-  await sb.from("site_data").upsert({id:"videos",data:v});
-}
-
-// ===== KIELET =====
-var L = {
-  fi:{all:"Kaikki",news:"Uutiset",main:"Pääuutinen",more:"Lisää",read:"Lue artikkeli",back:"Takaisin",login:"Kirjaudu",logout:"Kirjaudu ulos",reg:"Luo tunnus",send:"Lähetä",cancel:"Peruuta",pub:"Julkaise",filter:"Suodata:",search:"Hae uutisia\u2026",bm:"Kirjanmerkit",msg:"Viesti toimitukselle",saved:"Tallennettu",save:"Tallenna",cmts:"Kommentit",noArt:"Ei artikkeleita vielä.",noRes:"Ei tuloksia.",founded:"Perustettu",tagline:"\u201eKaikki mitä sinun tarvitsee tietää \u2014 ja hieman enemmän\u201d",motto:"Viikon tärkeimmät uutiset \u2014 Totuus ennen kaikkea",install:"Asenna",loginErr:"Väärä käyttäjätunnus tai salasana.",welcome:"Tervetuloa Martsan Uutisiin",approved:"Artikkeli lähetetty tarkastettavaksi!",art1:"artikkeli julkaistu",artN:"artikkelia julkaistu",edit:"Muokkaa",prof:"Profiili",related:"Aiheeseen liittyvää",rt:"min lukuaika",like:"Tykkää",liked:"Tykätty",videos:"Videot",addvideo:"Lisää video",addimage:"Lisää kuva",filename:"Tiedostonimi",caption:"Kuvateksti",vtitle:"Videon nimi",pdirect:"Julkaise suoraan",pvia:"Julkaise pääkäyttäjien kautta"},
-  en:{all:"All",news:"News",main:"Main Story",more:"More",read:"Read article",back:"Back",login:"Log in",logout:"Log out",reg:"Register",send:"Send",cancel:"Cancel",pub:"Publish",filter:"Filter:",search:"Search\u2026",bm:"Bookmarks",msg:"Message editors",saved:"Saved",save:"Save",cmts:"Comments",noArt:"No articles yet.",noRes:"No results.",founded:"Founded",tagline:'"Everything you need to know"',motto:"Truth above all",install:"Install",loginErr:"Wrong username or password.",welcome:"Welcome",approved:"Sent for review!",art1:"article published",artN:"articles published",edit:"Edit",prof:"Profile",related:"Related articles",rt:"min read",like:"Like",liked:"Liked",videos:"Videos",addvideo:"Add video",addimage:"Add image",filename:"Filename",caption:"Caption",vtitle:"Video title",pdirect:"Publish directly",pvia:"Send via admin"},
-  sv:{all:"Alla",news:"Nyheter",main:"Huvudnyhet",more:"Mer",read:"Läs artikel",back:"Tillbaka",login:"Logga in",logout:"Logga ut",reg:"Skapa konto",send:"Skicka",cancel:"Avbryt",pub:"Publicera",filter:"Filtrera:",search:"Sök\u2026",bm:"Bokhyllmärken",msg:"Meddelande",saved:"Sparad",save:"Spara",cmts:"Kommentarer",noArt:"Inga artiklar.",noRes:"Inga resultat.",founded:"Grundad",tagline:'"Allt du behöver veta"',motto:"Sanningen först",install:"Installera",loginErr:"Fel lösenord.",welcome:"Välkommen",approved:"Skickad!",art1:"artikel",artN:"artiklar",edit:"Redigera",prof:"Profil",related:"Relaterade artiklar",rt:"min läsning",like:"Gilla",liked:"Gillad",videos:"Videor",addvideo:"Lägg till video",addimage:"Lägg till bild",filename:"Filnamn",caption:"Bildtext",vtitle:"Videotitel",pdirect:"Publicera direkt",pvia:"Skicka via admin"}
+const err=(e)=>{
+  console.error(e);
+  errMsg=e?.message||"Virhe";
+  render();
 };
-function T(k){return(L[lang]&&L[lang][k])||L.fi[k]||k;}
 
-// ===== APUFUNKTIOT =====
-function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
-function dateFI(){return new Date().toLocaleDateString("fi-FI",{weekday:"long",year:"numeric",month:"long",day:"numeric"});}
-function todayFI(){return new Date().toLocaleDateString("fi-FI");}
-function getCls(s){if(!s)return "cat-default";var k=CATS.find(function(c){return c.toLowerCase()===s.toLowerCase();});return k?CCL[k]:"cat-default";}
-function rt(b){return Math.max(1,Math.round((b||"").split(/\s+/).length/200));}
-function isLiked(id){return getLikes().indexOf(id)!==-1;}
-function isBm(id){return getBm().indexOf(id)!==-1;}
-function isMod(u){var x=getUsers().find(function(y){return y.user===u;});return x&&x.moderator===true;}
-function canDirect(u){var x=getUsers().find(function(y){return y.user===u;});return x&&x.direct===true;}
-function canMsg2(){return admin||isMod(cu);}
-function viewCount(id){return getViews()[id]||0;}
-function isPopular(id){return viewCount(id)>=POP;}
-function applyTheme(t){
-  siteTheme=t||"red";
-  var c=THEMES[siteTheme]||THEMES.red;
-  document.documentElement.style.setProperty("--tp",c.p);
-  document.documentElement.style.setProperty("--red",c.p);
-  try{localStorage.setItem("mu_theme",siteTheme);}catch(e){}
-}
-function showNotif(m){
-  var el=document.getElementById("notif");
-  if(el){el.textContent=m;el.classList.add("show");setTimeout(function(){el.classList.remove("show");},3000);}
-}
-function trackView(id){
-  var v=getViews();v[id]=(v[id]||0)+1;saveViews(v);
-}
-function toggleLike(id){
-  var l=getLikes(),i=l.indexOf(id);
-  if(i===-1)l.push(id);else l.splice(i,1);
-  saveLikes(l);render();
-}
-function toggleBm(id){
-  var b=getBm(),i=b.indexOf(id);
-  if(i===-1)b.push(id);else b.splice(i,1);
-  saveBm(b);render();
-}
+const safeJSON=(v)=>{
+  try { return typeof v==="string"?JSON.parse(v):v||[]; }
+  catch { return []; }
+};
 
-// Rakentaa kuvaHTML:n artikkelin mediasta
-// media = [{file:"kuva.jpg", caption:"Teksti"}, ...]
-function buildMediaHtml(media){
-  if(!media||!media.length)return "";
-  return media.map(function(m){
-    var src = mediaPath(m.file||m.url||"");
-    var cap = m.caption ? "<p class='art-hero-caption'>"+esc(m.caption)+"</p>" : "";
-    if(!src) return "";
-    // mp4 tai muut videot
-    if(src.match(/\.mp4$/i)||src.match(/\.webm$/i)||src.match(/\.ogg$/i)||(m.type&&m.type==="video")){
-      return "<video class='art-hero-video' controls><source src='"+esc(src)+"'></video>"+cap;
-    }
-    return "<img class='art-hero' src='"+esc(src)+"' alt='"+(m.caption?esc(m.caption):"")+"'/>"+cap;
-  }).join("");
-}
+// ===== LOAD =====
+async function loadAll(){
+  const [a,u,p,m,c,v] = await Promise.all([
+    sb.from("articles").select("*"),
+    sb.from("users").select("*"),
+    sb.from("pending").select("*"),
+    sb.from("messages").select("*"),
+    sb.from("comments").select("*"),
+    sb.from("site_data").select("*").eq("id","videos").maybeSingle()
+  ]);
 
-// Näyttää ensimmäisen kuvan korttina
-function buildThumb(media){
-  if(!media||!media.length)return "";
-  var img=media.find(function(m){
-    var f=m.file||m.url||"";
-    return f.match(/\.jpg$/i)||f.match(/\.jpeg$/i)||f.match(/\.png$/i)||f.match(/\.gif$/i)||(m.type&&m.type==="image");
-  });
-  if(!img)return "";
-  var src=mediaPath(img.file||img.url||"");
-  var cap=img.caption||"";
-  return "<img class='card-thumb' src='"+esc(src)+"' alt='"+esc(cap)+"'/>"
-       +(cap?"<p class='card-caption'>"+esc(cap)+"</p>":"");
-}
+  articles=(a.data||[]).map(x=>({...x,media:safeJSON(x.media)}));
+  users=u.data||[];
+  pending=(p.data||[]).map(x=>({...x,media:safeJSON(x.media)}));
+  messages=m.data||[];
+  comments=c.data||[];
+  videos=v?.data?.data||[];
 
-// ===== KUVARIVIT EDITORISSA =====
-function renderImageRows(){
-  var rows = pendImages.map(function(img,i){
-    var src = img.file ? mediaPath(img.file) : "";
-    var prev = src ? "<img class='media-prev-img' src='"+esc(src)+"' onerror=\"this.style.display='none'\" alt=''/>" : "<span style='width:60px;flex-shrink:0;font-size:.6rem;color:var(--muted);display:flex;align-items:center;justify-content:center'>JPG</span>";
-    return "<div class='media-row'>"
-      + prev
-      + "<input type='text' id='img-file-"+i+"' placeholder='kuva.jpg' value='"+esc(img.file||"")+"' style='max-width:140px'>"
-      + "<input type='text' id='img-cap-"+i+"' placeholder='Kuvateksti...' value='"+esc(img.caption||"")+"'>"
-      + "<button data-rmimg='"+i+"'>\u2715</button>"
-      + "</div>";
-  }).join("");
-  return rows + "<button class='add-media-btn' id='add-img-btn'>+ "+T("addimage")+"</button>";
-}
-
-// ===== RENDER =====
-function renderCol(col){
-  var list=articles
-    .filter(function(a){return a.col===col;})
-    .filter(function(a){return !fCat||(a.sec||"")===fCat;})
-    .filter(function(a){if(!fSearch)return true;var q=fSearch.toLowerCase();return(a.title||"").toLowerCase().includes(q)||(a.body||"").toLowerCase().includes(q)||(a.author||"").toLowerCase().includes(q);});
-  if(!list.length&&!dataLoaded)return "<div class='skeleton' style='height:1.4rem;width:75%'></div><div class='skeleton' style='height:.7rem;width:90%'></div><div class='skeleton' style='height:.7rem;width:60%'></div>";
-  if(!list.length)return "<div class='empty'>"+(fCat||fSearch?T("noRes"):T("noArt"))+"</div>";
-  return list.map(function(a){
-    var lead=col==="center",tag=lead?"h2":"h3";
-    var ex=(a.body||"").replace(/\n/g," ").substring(0,150)+((a.body||"").length>150?"\u2026":"");
-    var bl=[a.author,a.sec,a.date].filter(Boolean).map(esc).join(" \u00b7 ");
-    var cls=getCls(a.sec),bm=isBm(a.id),lk=isLiked(a.id);
-    var views=viewCount(a.id),likes=a.likes||0;
-    var pop=isPopular(a.id)?"<span class='pop-badge'>\ud83d\udd25 Suosittu</span> ":"";
-    return "<div class='card"+(lead?" lead":"")+"' data-open='"+a.id+"'>"
-      +"<button class='del-btn' data-del='"+a.id+"'>Poista</button>"
-      +"<button class='edit-btn' data-edit='"+a.id+"'>\u270e</button>"
-      +"<button class='bookmark-btn"+(bm?" bookmarked":"")+"' data-bm='"+a.id+"'>"+(bm?"\u2605":"\u2606")+"</button>"
-      +pop+(a.sec?"<div class='cat-badge "+cls+"'>"+esc(a.sec)+"</div>":"")
-      +buildThumb(a.media||[])
-      +"<"+tag+">"+esc(a.title)+"</"+tag+">"
-      +(bl?"<p class='byline'>"+bl+"</p>":"")
-      +"<p class='excerpt'>"+esc(ex)+"</p>"
-      +"<div class='card-meta'><span class='readtime'>\ud83d\udcd6 "+rt(a.body)+" "+T("rt")+"</span>"
-      +"<span class='views'>\ud83d\udc41 "+views+"</span>"
-      +"<button class='like-btn"+(lk?" liked":"")+"' data-like='"+a.id+"'>"+(lk?"\u2665":"\u2661")+" "+likes+"</button>"
-      +"</div><span class='hint'>"+T("read")+" \u2192</span></div>";
-  }).join(col==="center"?"<hr class='divh'>":"");
-}
-
-function renderVideosPage(){
-  var isA=admin,isMU=isMod(cu);
-  var canEdit=(isA||isMU);
-  var videos=gVideos;
-  var cards=videos.length===0
-    ? "<div class='empty'>Ei videoita vielä.</div>"
-    : videos.map(function(v,i){
-        var src=mediaPath(v.file||"");
-        return "<div class='video-card'>"
-          +"<button class='video-del-btn' data-vdel='"+i+"'>\u2715</button>"
-          +"<video controls preload='metadata'><source src='"+esc(src)+"' type='video/mp4'></video>"
-          +"<div class='video-card-body'>"
-          +"<div class='video-card-title'>"+esc(v.title||v.file||"Video")+"</div>"
-          +"<div class='video-card-date'>"+esc(v.date||"")+"</div>"
-          +"</div></div>";
-      }).join("");
-
-  var editorHtml="";
-  if(showVideoEditor&&canEdit){
-    editorHtml="<div class='video-editor'>"
-      +"<h3>"+T("addvideo")+"</h3>"
-      +"<label>"+T("filename")+" (esim. video.mp4)</label>"
-      +"<input id='vf' placeholder='video.mp4'>"
-      +"<label>"+T("vtitle")+"</label>"
-      +"<input id='vt' placeholder='Videon otsikko...'>"
-      +"<div style='display:flex;gap:.7rem;margin-top:.3rem'>"
-      +"<button class='btn-p' id='save-video' style='flex:0;padding:.45rem 1.2rem'>Tallenna</button>"
-      +"<button class='btn-s' id='cancel-video'>"+T("cancel")+"</button>"
-      +"</div></div>";
-  }
-
-  return "<div class='videos-page'>"
-    +"<div class='videos-header'>"
-    +"<h2>"+T("videos")+"</h2>"
-    +(canEdit?"<button class='add-btn' id='toggle-video-editor' style='margin:0;display:block'>"+(showVideoEditor?"Sulje":"+ "+T("addvideo"))+"</button>":"")
-    +"</div>"
-    +editorHtml
-    +"<div class='videos-grid'>"+cards+"</div>"
-    +"</div>";
-}
-
-function render(){
-  var app=document.getElementById("app");
-  if(!app)return;
-  var isA=admin,isMU=isMod(cu),cMsg=canMsg2(),cDir=canDirect(cu);
-  app.className=(isA||isMU)?"admin-on":(loggedIn?"logged-in":"");
-
-  var confirmHtml=confirmP?"<div class='confirm-bg'><div class='confirm-box'><p>Poistetaanko pysyvästi?</p><div class='confirm-btns'><button class='cbtn-yes' id='cy'>Poista</button><button class='cbtn-no' id='cn'>Peruuta</button></div></div></div>":"";
-  var errHtml=errMsg?"<div class='err-bar'><span>"+esc(errMsg)+"</span><button id='errd'>\u2715</button></div>":"";
-
-  // INBOX
-  var inboxHtml="";
-  if(showInbox&&isA){
-    var pend=getPending();
-    var pr=pend.map(function(a){return "<div style='border:1px solid #c8bba0;padding:.8rem;margin-bottom:.8rem'><strong style='font-family:\"Playfair Display\",Georgia,serif'>"+esc(a.title)+"</strong><p style='font-size:.72rem;color:var(--muted);margin:.2rem 0'>"+esc(a.author||"")+" \u00b7 "+esc(a.date)+"</p><p style='font-size:.8rem;margin:.4rem 0'>"+esc(a.body.substring(0,120))+"\u2026</p><div style='display:flex;gap:.5rem;margin-top:.5rem'><button id='appr-"+a.id+"' style='background:var(--ink);color:var(--paper);border:none;padding:.3rem .9rem;cursor:pointer;font-family:\"Bebas Neue\",sans-serif;font-size:.8rem'>Hyväksy</button><button id='rej-"+a.id+"' style='background:var(--tp);color:#fff;border:none;padding:.3rem .9rem;cursor:pointer;font-family:\"Bebas Neue\",sans-serif;font-size:.8rem'>Hylkää</button></div></div>";}).join("");
-    inboxHtml="<div class='modal-bg'><div class='big-modal'><h2>Saapuneet artikkelit</h2>"+(pend.length===0?"<p style='font-size:.8rem;color:var(--muted);font-style:italic;margin-bottom:1rem'>Ei odottavia artikkeleita.</p>":pr)+"<button class='btn-s' id='close-inbox'>Sulje</button></div></div>";
-  }
-
-  // MESSAGES
-  var msgsHtml="";
-  if(showMsgs&&cMsg){
-    var allMsgs=getMsgs();
-    var filtered=msgSearch?allMsgs.filter(function(m){var q=msgSearch.toLowerCase();return(m.from||"").toLowerCase().includes(q)||(m.subject||"").toLowerCase().includes(q)||(m.text||"").toLowerCase().includes(q);}):allMsgs;
-    var mrows=filtered.length===0?"<p style='font-size:.8rem;color:var(--muted);font-style:italic'>Ei viestejä.</p>":filtered.map(function(m){var op=openMsg===m.id;return "<div><div class='mrow' id='mr-"+m.id+"'><span class='mrow-from'>"+esc(m.from)+"</span><span class='mrow-sub'>"+esc(m.subject||m.text.substring(0,40))+"</span><button class='mrow-del' id='md-"+m.id+"'>\u2715</button></div><div class='mdetail"+(op?" open":"")+"'>"+esc(m.text)+"<div style='font-size:.62rem;color:var(--muted);margin-top:.3rem;text-transform:uppercase;letter-spacing:.08em'>"+esc(m.from)+" \u00b7 "+esc(m.date)+"</div></div></div>";}).join("");
-    msgsHtml="<div class='modal-bg'><div class='big-modal'><h2>Viestit ("+allMsgs.length+")</h2><input class='msearch' id='ms-inp' placeholder='Hae\u2026' value='"+esc(msgSearch)+"'>"+mrows+"<div style='margin-top:1rem'><button class='btn-s' id='close-msgs'>Sulje</button></div></div></div>";
-  }
-
-  // SEND MSG
-  var sendHtml="";
-  if(showSend&&loggedIn&&!cMsg){
-    sendHtml="<div class='modal-bg'><div class='send-modal'><h2>"+T("msg")+"</h2><p>Yksityinen viesti toimitukselle</p><label>Aihe</label><input id='ms-subj' placeholder='Aihe\u2026'><label>Viesti</label><textarea id='ms-body' placeholder='Kirjoita viesti\u2026'></textarea><div class='modal-btns'><button class='btn-p' id='do-send'>"+T("send")+"</button><button class='btn-s' id='cancel-send'>"+T("cancel")+"</button></div></div></div>";
-  }
-
-  // MOD PANEL
-  var modHtml="";
-  if(showMod&&isA){
-    var allU=getUsers().filter(function(u){return u.user!==AU;});
-    var filtU=uSearch?allU.filter(function(u){return u.user.toLowerCase().includes(uSearch.toLowerCase());}):allU;
-    var ur=filtU.map(function(u){return "<div class='urow'><span>"+esc(u.user)+(u.direct?"<span class='ubadge'>Suora</span>":"")+"</span><div style='display:flex;gap:.3rem;flex-wrap:wrap'><button id='mod-"+esc(u.user)+"' class='ub"+(u.moderator?" red":"")+"'>"+(u.moderator?"Poista mod":"Mod")+"</button><button id='dp-"+esc(u.user)+"' class='ub"+(u.direct?" green":" dim")+"'>"+(u.direct?"\u2713 Suorajulkaisu":"Suorajulkaisu")+"</button><button id='du-"+esc(u.user)+"' class='ub outline'>Poista</button></div></div>";}).join("");
-    var themeH="<div style='margin-top:1.2rem;padding-top:.8rem;border-top:1px solid #c8bba0'><p style='font-family:\"Bebas Neue\",sans-serif;font-size:.68rem;letter-spacing:.15em;color:var(--muted);margin-bottom:.5rem'>SIVUN VÄRI</p><div style='display:flex;gap:.5rem'><button class='theme-btn tbr"+(siteTheme==="red"?" act":"")+"' id='th-red'>\ud83d\udd34 Punainen</button><button class='theme-btn tbb"+(siteTheme==="blue"?" act":"")+"' id='th-blue'>\ud83d\udd35 Sininen</button><button class='theme-btn tbg"+(siteTheme==="green"?" act":"")+"' id='th-green'>\ud83d\udfe2 Vihreä</button></div></div>";
-    modHtml="<div class='modal-bg'><div class='big-modal'><h2>Käyttäjät ("+allU.length+")</h2><input class='msearch' id='us-inp' placeholder='Hae käyttäjää\u2026' value='"+esc(uSearch)+"'>"+ur+themeH+"<div style='margin-top:1rem'><button class='btn-s' id='close-mod'>Sulje</button></div></div></div>";
-  }
-
-  // BOOKMARKS
-  var bmHtml="";
-  if(showBm&&loggedIn){
-    var bms=getBm();
-    var bmArts=bms.map(function(id){return articles.find(function(a){return a.id===id;});}).filter(Boolean);
-    var bmRows=bmArts.length===0?"<p style='font-size:.8rem;color:var(--muted);font-style:italic'>Ei kirjanmerkkejä.</p>":bmArts.map(function(a){return "<div class='bm-item' id='bmo-"+a.id+"'><span class='bm-item-title'>"+esc(a.title)+"</span><button class='bm-del' id='bmd-"+a.id+"'>\u2715</button></div>";}).join("");
-    bmHtml="<div class='modal-bg'><div class='big-modal'><h2>"+T("bm")+"</h2>"+bmRows+"<div style='margin-top:1rem'><button class='btn-s' id='close-bm'>Sulje</button></div></div></div>";
-  }
-
-  // PROFILE
-  var profHtml="";
-  if(showProf&&loggedIn){
-    var myCmts=getCmts().filter(function(c){return c.author===cu;});
-    var myPend=getPending().filter(function(a){return a.author===cu;});
-    var myBms=getBm();
-    var cRows=myCmts.length===0?"<p style='font-size:.78rem;color:var(--muted);font-style:italic'>Ei kommentteja.</p>":myCmts.map(function(c){return "<div class='pi' id='pc-"+c.artId+"'>"+esc(c.text.substring(0,60))+(c.text.length>60?"\u2026":"")+"<span style='font-size:.6rem;color:var(--muted);margin-left:.4rem'>"+esc(c.date)+"</span></div>";}).join("");
-    var pRows=myPend.length===0?"<p style='font-size:.78rem;color:var(--muted);font-style:italic'>Ei odottavia.</p>":myPend.map(function(a){return "<div class='pi'>"+esc(a.title)+"<span style='font-size:.6rem;color:var(--muted);margin-left:.4rem'>Odottaa hyväksyntää</span></div>";}).join("");
-    profHtml="<div class='modal-bg'><div class='big-modal'><h2>"+T("prof")+": "+esc(cu)+"</h2><div class='ps'><h3>Kirjanmerkit ("+myBms.length+")</h3>"+(myBms.length===0?"<p style='font-size:.78rem;color:var(--muted);font-style:italic'>Ei kirjanmerkkejä.</p>":myBms.map(function(id){var a=articles.find(function(x){return x.id===id;});return a?"<div class='pi' id='pb-"+a.id+"'>"+esc(a.title)+"</div>":"";}).join(""))+"</div><div class='ps'><h3>Kommentit ("+myCmts.length+")</h3>"+cRows+"</div><div class='ps'><h3>Odottavat ("+myPend.length+")</h3>"+pRows+"</div><div style='margin-top:1rem'><button class='btn-s' id='close-prof'>Sulje</button></div></div></div>";
-  }
-
-  // LOGIN/REG
-  var loginHtml="";
-  if(showLogin){loginHtml="<div class='modal-bg'><div class='modal'><h2>"+T("login")+"</h2><p class='sub'>Kirjaudu Martsan Uutisiin</p><label>Käyttäjätunnus</label><input id='lu' type='text' autocomplete='username' placeholder='käyttäjätunnus'><label>Salasana</label><input id='lp' type='password' autocomplete='current-password' placeholder='\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'><div class='modal-err'>"+esc(loginErr)+"</div><div class='modal-btns'><button class='btn-p' id='lbtn'>"+T("login")+"</button><button class='btn-s' id='lcbtn'>"+T("cancel")+"</button></div><p style='margin-top:1rem;font-size:.72rem;color:var(--muted)'>Ei tiliä? <span id='go-reg' style='color:var(--tp);cursor:pointer;text-decoration:underline'>"+T("reg")+"</span></p></div></div>";}
-  else if(showReg){loginHtml="<div class='modal-bg'><div class='modal'><h2>"+T("reg")+"</h2><p class='sub'>Luo oma käyttäjätunnus</p><label>Käyttäjätunnus</label><input id='ru' type='text' autocomplete='username' placeholder='käyttäjätunnus'><label>Salasana</label><input id='rp' type='password' autocomplete='new-password' placeholder='\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'><label>Salasana uudelleen</label><input id='rp2' type='password' autocomplete='new-password' placeholder='\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022'><div class='modal-err'>"+esc(regErr)+"</div><div class='modal-btns'><button class='btn-p' id='rbtn'>"+T("reg")+"</button><button class='btn-s' id='rcbtn'>"+T("cancel")+"</button></div><p style='margin-top:1rem;font-size:.72rem;color:var(--muted)'>Onko jo tunnus? <span id='go-login' style='color:var(--tp);cursor:pointer;text-decoration:underline'>"+T("login")+"</span></p></div></div>";}
-
-  // ADMIN BAR
-  var abHtml="";
-  if(isA||isMU){
-    var ic=getPending().length,mc=getMsgs().length;
-    abHtml="<div class='ab'><span>"+(isA?"HALLINTAMOODI":"MODERAATTORI")+" PÄÄLLÄ</span>"+(isA?"<button id='open-inbox'>Saapuneet"+(ic>0?" ("+ic+")":"")+"</button>":"")+(cMsg?"<button id='open-msgs'>Viestit"+(mc>0?" ("+mc+")":"")+"</button>":"")+(isA?"<button id='open-mod'>Käyttäjät</button>":"")+"<button id='do-logout'>"+T("logout")+"</button></div>";
-  }
-
-  // TOP BAR
-  var langMenu="<div class='lang-wrap'><button class='lang-btn' id='lang-btn'>\ud83c\udf10 "+lang.toUpperCase()+"</button><div class='lang-dropdown"+(showLang?" open":"")+"'><button class='lang-option' id='lang-fi'>\ud83c\uddeb\ud83c\uddee Suomi</button><button class='lang-option' id='lang-en'>\ud83c\uddec\ud83c\udde7 English</button><button class='lang-option' id='lang-sv'>\ud83c\uddf8\ud83c\uddea Svenska</button></div></div>";
-  var sendBtn=(!cMsg&&loggedIn)?"<button class='tbtn' id='open-send'>\u2709 "+T("msg")+"</button>":"";
-  var bmBtn=loggedIn?"<button class='tbtn' id='open-bm'>\u2605 "+T("bm")+"</button>":"";
-  var profBtn=loggedIn?"<button class='tbtn' id='open-prof'>\ud83d\udce4 "+T("prof")+"</button>":"";
-  var topBar="<div class='top-bar'><div class='dl-wrap'><button class='dl-main-btn' id='dl-btn'>\u2b07 "+T("install")+" <span class='dl-arrow'>\u25bc</span></button><div class='dl-dropdown' id='dl-dd'><button id='dl-a'>Android</button><button id='dl-w'>Windows</button><button id='dl-m'>Mac</button></div></div>"+langMenu+sendBtn+bmBtn+profBtn+"</div>";
-
-  var tickerTxt=articles.length>0?articles.map(function(a){return esc(a.title);}).join(" &nbsp;\u2b26&nbsp; "):T("welcome");
-
-  // NAV TABS
-  var navTabs="<div style='padding:0 1.2rem'><div class='nav-tabs'>"
-    +"<button class='nav-tab"+(page!=="videos"?" active":"")+"' id='tab-uutiset'>"+T("news")+"</button>"
-    +"<button class='nav-tab"+(page==="videos"?" active":"")+"' id='tab-videot'>"+T("videos")+" ("+gVideos.length+")</button>"
-    +"</div></div>";
-
-  // MAIN
-  var mainHtml="";
-  if(page==="article"){
-    var a=articles.find(function(x){return x.id===openId;});
-    if(!a){
-      mainHtml="<div style='max-width:680px;margin:3rem auto;padding:0 1.2rem;text-align:center'><p style='font-family:\"Playfair Display\",Georgia,serif;font-size:1.2rem;margin-bottom:1rem'>Artikkelia ei löydy.</p><button class='back-btn' id='back-btn'>\u2190 "+T("back")+"</button></div>";
-    } else {
-      var bl=[a.author,a.sec,a.date].filter(Boolean).map(esc).join(" \u00b7 ");
-      var bd=a.body.split(/\n\n+/).filter(function(p){return p.trim();}).map(function(p){return "<p>"+esc(p.trim().replace(/\n/g," "))+"</p>";}).join("");
-      var views=viewCount(a.id),likes=a.likes||0,lk=isLiked(a.id),bm=isBm(a.id);
-      var cls=getCls(a.sec);
-      var pop=isPopular(a.id)?"<span class='pop-badge'>\ud83d\udd25 Suosittu</span><br>":"";
-      var allCmts=getCmts().filter(function(c){return c.artId===a.id;});
-      var crows=allCmts.map(function(c){var op=openCmt[c.id];return "<div><div class='crow' id='cr-"+c.id+"'><span class='crow-author'>"+esc(c.author)+"</span><span class='crow-preview'>"+esc(c.text.substring(0,50))+(c.text.length>50?"\u2026":"")+"</span><button class='cdel' id='cd-"+c.id+"'>\u2715</button></div><div class='cdetail"+(op?" open":"")+"'>"+esc(c.text)+"<div style='font-size:.62rem;color:var(--muted);margin-top:.3rem;text-transform:uppercase'>"+esc(c.author)+" \u00b7 "+esc(c.date)+"</div></div></div>";}).join("");
-      var cForm=loggedIn?"<div class='comment-form'><textarea id='c-inp' placeholder='"+T("cmts")+"...'></textarea><button id='c-sub' data-aid='"+a.id+"'>"+T("send")+"</button></div>":"<p style='font-size:.72rem;color:var(--muted);font-style:italic;margin-top:.6rem'>Kirjaudu sisään kommentoidaksesi.</p>";
-      var rel=articles.filter(function(x){return x.id!==a.id&&x.sec===a.sec;}).slice(0,3);
-      var relHtml=rel.length?"<div class='related-section'><div class='related-title'>"+T("related")+"</div>"+rel.map(function(x){return "<div class='related-item' id='ri-"+x.id+"'>"+esc(x.title)+"</div>";}).join("")+"</div>":"";
-      mainHtml="<div class='art-wrap'><button class='back-btn' id='back-btn'>\u2190 "+T("back")+"</button>"+pop+(a.sec?"<div class='art-badge "+cls+"'>"+esc(a.sec)+"</div>":"")+"<h1 class='art-title'>"+esc(a.title)+"</h1><div class='art-byline'>"+(bl?"<span>"+bl+"</span>":"")+"<span>\ud83d\udcd6 "+rt(a.body)+" "+T("rt")+"</span><span>\ud83d\udc41 "+views+"</span><button class='art-like-btn"+(lk?" liked":"")+"' id='art-like' data-id='"+a.id+"'>"+(lk?"\u2665":"\u2661")+" "+likes+" "+T(lk?"liked":"like")+"</button><button class='art-bm-btn"+(bm?" bookmarked":"")+"' id='art-bm' data-id='"+a.id+"'>"+(bm?"\u2605 "+T("saved"):"\u2606 "+T("save"))+"</button><button class='art-edit-btn' id='art-edit' data-id='"+a.id+"'>\u270e "+T("edit")+"</button></div>"+buildMediaHtml(a.media||[])+"<div class='art-body'>"+bd+"</div><hr class='art-end'><button class='art-del-btn' id='art-del' data-id='"+a.id+"'>Poista artikkeli</button></div>"+relHtml+"<div class='comments-section'><div class='comments-title'>"+T("cmts")+" ("+allCmts.length+")</div>"+crows+cForm+"</div>";
-    }
-  } else if(page==="videos"){
-    mainHtml=renderVideosPage();
-  } else {
-    var fBar="<div class='filter-bar'><span class='filter-label'>"+T("filter")+"</span><button class='filter-btn"+(fCat===""?" active":"")+"' id='fa'>"+T("all")+"</button>"+CATS.map(function(c){return "<button class='filter-btn"+(fCat===c?" active":"")+" "+(CCL[c]||"")+"' id='fc-"+c+"'>"+c+"</button>";}).join("")+"<span class='filter-search-wrap'><input class='filter-search' id='fsrch' placeholder='"+T("search")+"' value='"+esc(fSearch)+"'></span></div>";
-    var edArt=editId?articles.find(function(a){return a.id===editId;}):null;
-
-    // Rakenna kuvaeditorin html
-    var imgEditorHtml="<div class='fw'><label>"+T("addimage")+" (JPG-tiedostot \u2014 kirjoita tiedostonimi)</label>"+renderImageRows()+"</div>";
-
-    var pubBtns="";
-    if(editId){pubBtns="<button class='btn-p' id='pub-btn' style='flex:0;padding:.5rem 1.5rem'>"+T("edit")+"</button>";}
-    else if(admin){pubBtns="<button class='btn-p' id='pub-btn' style='flex:0;padding:.5rem 1.5rem'>"+T("pub")+"</button>";}
-    else if(cDir){pubBtns="<button class='btn-direct' id='pub-direct'>\u2713 "+T("pdirect")+"</button><button class='btn-via' id='pub-btn'>\u2192 "+T("pvia")+"</button>";}
-    else{pubBtns="<button class='btn-p' id='pub-btn' style='flex:0;padding:.5rem 1.5rem'>"+T("pub")+"</button>";}
-    var ed="<button class='add-btn' id='add-btn'>"+(showEditor?(editId?"Sulje muokkaus":"Sulje lomake"):"+ Lisää uutinen")+"</button><div class='editor"+(showEditor?" open":"")+"'><div style='max-width:1050px;margin:0 auto'><h2>\u270d "+(editId?"Muokkaa artikkelia":"Kirjoita uusi uutinen")+"</h2><div class='fields'><div><label>Otsikko *</label><input id='et' placeholder='Otsikko\u2026' value='"+(edArt?esc(edArt.title):"")+"'></div><div><label>Kirjoittaja</label><input id='ea' placeholder='Toim. M. Salonen' value='"+(edArt?esc(edArt.author||""):"")+"'></div><div><label>Osasto</label><select id='es'><option value=''>-- Valitse --</option>"+CATS.map(function(c){return "<option value='"+c+"'"+(edArt&&edArt.sec===c?" selected":"")+">"+c+"</option>";}).join("")+"</select></div><div><label>Palsta</label><select id='ec'><option value='left'"+(edArt&&edArt.col==="left"?" selected":"")+">Vasen</option><option value='center'"+((!edArt||edArt.col==="center")?" selected":"")+">Keskellä</option><option value='right'"+(edArt&&edArt.col==="right"?" selected":"")+">Oikea</option></select></div><div class='fw'><label>Teksti *</label><textarea id='eb' placeholder='Kirjoita teksti tähän\u2026'>"+(edArt?esc(edArt.body):"")+"</textarea></div>"+imgEditorHtml+"</div><div class='ea'>"+pubBtns+"<button class='btn-s' id='cancel-ed'>"+T("cancel")+"</button></div></div></div>";
-    mainHtml=fBar+"<div class='container'><div class='grid'><div class='col'><div class='sec-label'>"+T("news")+"</div>"+renderCol("left")+"</div><div class='divider'></div><div class='col'><div class='sec-label'>"+T("main")+"</div>"+renderCol("center")+"</div><div class='divider'></div><div class='col'><div class='sec-label'>"+T("more")+"</div>"+renderCol("right")+"</div></div></div>"+ed;
-  }
-
-  var n=articles.length;
-  var mhr=loggedIn?"<span>"+dateFI()+"</span>":"<span style='display:flex;flex-direction:column;align-items:flex-end;gap:.2rem'><button class='mlogin' id='mlogin'>"+T("login")+"</button><span>"+dateFI()+"</span></span>";
-  var fu=loggedIn?"<span>Kirjautunut: "+esc(cu)+(isMU&&!isA?" \u2605":"")+" &nbsp;\u00b7&nbsp; <span id='logout2' style='cursor:pointer;text-decoration:underline;color:var(--tp)'>"+T("logout")+"</span></span>":"<span><span id='atrig' style='cursor:default;user-select:none'>toimitus@martsanuutiset.fi</span> &nbsp;\u00b7&nbsp; <span id='ll' style='cursor:pointer;text-decoration:underline;color:var(--tp)'>"+T("login")+" / "+T("reg")+"</span></span>";
-
-  app.innerHTML=confirmHtml+errHtml+inboxHtml+msgsHtml+sendHtml+modHtml+bmHtml+profHtml+loginHtml+abHtml+topBar
-    +"<div id='notif' class='notif'></div>"
-    +"<div class='masthead'><span>"+T("founded")+" 2026</span><span style='flex:1;text-align:center'>\u2605 Luotettavaa uutisointia joka viikko \u2605</span>"+mhr+"</div>"
-    +"<div class='nameplate' id='nameplate'><h1>Martsan <em>Uutiset</em></h1><div class='np-rule'><span>"+T("motto")+"</span></div><p class='tagline'>"+T("tagline")+"</p></div>"
-    +"<div class='ticker-wrap'><div class='ticker'><span class='ticker-label'>UUTISET NYT</span><span class='ticker-inner'>"+tickerTxt+" &nbsp;\u2b26&nbsp; </span></div></div>"
-    +(page!=="article"?navTabs:"")
-    +mainHtml
-    +"<footer><span>\u00a9 2026 Martsan Uutiset</span><span>"+n+" "+(n===1?T("art1"):T("artN"))+"</span>"+fu+"</footer>";
-
-  attachEvents();
-  if(showLogin)setTimeout(function(){var e=document.getElementById("lu");if(e)e.focus();},20);
-  if(showReg)setTimeout(function(){var e=document.getElementById("ru");if(e)e.focus();},20);
-}
-
-// ===== EVENTS =====
-function attachEvents(){
-  function on(id,fn){var e=document.getElementById(id);if(e)e.addEventListener("click",fn);}
-  function rf(id,v){var e=document.getElementById(id);if(e){e.focus();try{e.setSelectionRange(v.length,v.length);}catch(x){}}}
-
-  on("cy",function(){if(!confirmP)return;var d=confirmP;confirmP=null;if(d.type==="article")doDeleteArticle(d.id,d.back);else if(d.type==="video")doDeleteVideo(d.idx);});
-  on("cn",function(){confirmP=null;render();});
-  on("errd",function(){errMsg="";render();});
-  on("lang-btn",function(e){e.stopPropagation();showLang=!showLang;render();});
-  on("lang-fi",function(){lang="fi";showLang=false;render();});
-  on("lang-en",function(){lang="en";showLang=false;render();});
-  on("lang-sv",function(){lang="sv";showLang=false;render();});
-  on("tab-uutiset",function(){page="front";render();});
-  on("tab-videot",function(){page="videos";render();});
-  on("dl-btn",function(e){
-    e.stopPropagation();
-    var b=document.getElementById("dl-btn"),d=document.getElementById("dl-dd");
-    if(!b||!d)return;
-    var op=!d.classList.contains("open");
-    d.classList.toggle("open");b.classList.toggle("open");
-    if(op)setTimeout(function(){function c(e){if(!e.target.closest(".dl-wrap")){var d2=document.getElementById("dl-dd"),b2=document.getElementById("dl-btn");if(d2)d2.classList.remove("open");if(b2)b2.classList.remove("open");document.removeEventListener("click",c);}}document.addEventListener("click",c);},10);
-  });
-  on("dl-a",function(){alert("Avaa sivusto Chromella ja paina 'Lisää aloitusnäyttöön'.");});
-  on("dl-w",function(){alert("Avaa sivusto Chromella ja paina osoitepalkin asennuskuvaketta.");});
-  on("dl-m",function(){alert("Avaa sivusto Safarilla ja paina Jaa → Lisää Koti-valikkoon.");});
-  on("lbtn",doLogin);on("lcbtn",function(){showLogin=false;render();});
-  var lu=document.getElementById("lu"),lp=document.getElementById("lp");
-  if(lu)lu.addEventListener("keydown",function(e){if(e.key==="Enter"&&lp)lp.focus();});
-  if(lp)lp.addEventListener("keydown",function(e){if(e.key==="Enter")doLogin();});
-  on("go-reg",function(){showLogin=false;showReg=true;regErr="";render();});
-  on("go-login",function(){showReg=false;showLogin=true;loginErr="";render();});
-  on("rbtn",doRegister);on("rcbtn",function(){showReg=false;render();});
-  var rp2=document.getElementById("rp2");if(rp2)rp2.addEventListener("keydown",function(e){if(e.key==="Enter")doRegister();});
-  function doLogout(){admin=false;loggedIn=false;cu="";showEditor=false;showInbox=false;showMod=false;showMsgs=false;showSend=false;showBm=false;showProf=false;openMsg=null;fCat="";fSearch="";editId=null;pendImages=[];render();}
-  on("do-logout",doLogout);on("logout2",doLogout);
-  on("open-inbox",function(){showInbox=true;render();});on("close-inbox",function(){showInbox=false;render();});
-  on("open-msgs",function(){showMsgs=true;render();});on("close-msgs",function(){showMsgs=false;openMsg=null;render();});
-  on("open-mod",function(){showMod=true;render();});on("close-mod",function(){showMod=false;render();});
-  on("open-bm",function(){showBm=true;render();});on("close-bm",function(){showBm=false;render();});
-  on("open-send",function(){showSend=true;render();});on("cancel-send",function(){showSend=false;render();});
-  on("open-prof",function(){showProf=true;render();});on("close-prof",function(){showProf=false;render();});
-  on("th-red",function(){applyTheme("red");render();});
-  on("th-blue",function(){applyTheme("blue");render();});
-  on("th-green",function(){applyTheme("green");render();});
-  var msi=document.getElementById("ms-inp");if(msi)msi.addEventListener("input",function(){msgSearch=this.value;var v=this.value;render();rf("ms-inp",v);});
-  var usi=document.getElementById("us-inp");if(usi)usi.addEventListener("input",function(){uSearch=this.value;var v=this.value;render();rf("us-inp",v);});
-  var fsi=document.getElementById("fsrch");if(fsi){fsi.addEventListener("input",function(){fSearch=this.value;var v=this.value;render();rf("fsrch",v);});fsi.addEventListener("click",function(e){e.stopPropagation();});}
-  on("fa",function(){fCat="";render();});
-  CATS.forEach(function(c){on("fc-"+c,function(){fCat=(fCat===c?"":c);render();});});
-
-  // Kuvaeditori: lisää kuvarivi
-  on("add-img-btn",function(){pendImages.push({file:"",caption:""});render();});
-
-  // Kuvaeditori: poista kuvarivi
-  document.querySelectorAll("[data-rmimg]").forEach(function(b){
-    b.addEventListener("click",function(e){
-      e.stopPropagation();
-      var i=parseInt(b.getAttribute("data-rmimg"));
-      pendImages.splice(i,1);
-      render();
-    });
-  });
-
-  // Kuvaeditori: päivitä arvo kentästä (live)
-  pendImages.forEach(function(img,i){
-    var fi=document.getElementById("img-file-"+i);
-    var ci=document.getElementById("img-cap-"+i);
-    if(fi){
-      fi.addEventListener("input",function(){
-        pendImages[i].file=this.value.trim();
-        // Päivitä preview kuva ilman full render
-        var prev=fi.closest(".media-row").querySelector(".media-prev-img");
-        if(prev&&pendImages[i].file){prev.src=mediaPath(pendImages[i].file);}
-      });
-    }
-    if(ci){
-      ci.addEventListener("input",function(){pendImages[i].caption=this.value;});
-    }
-  });
-
-  // Video editor
-  on("toggle-video-editor",function(){showVideoEditor=!showVideoEditor;render();});
-  on("cancel-video",function(){showVideoEditor=false;render();});
-  on("save-video",function(){doAddVideo();});
-
-  // Video poisto
-  document.querySelectorAll("[data-vdel]").forEach(function(b){
-    b.addEventListener("click",function(e){
-      e.stopPropagation();
-      var i=parseInt(b.getAttribute("data-vdel"));
-      confirmP={type:"video",idx:i};
-      render();
-    });
-  });
-
-  // Pending
-  getPending().forEach(function(a){
-    on("appr-"+a.id,function(){doApprove(a);});
-    on("rej-"+a.id,function(){doReject(a.id);});
-  });
-
-  // Users
-  getUsers().filter(function(u){return u.user!==AU;}).forEach(function(u){
-    on("mod-"+u.user,function(){var us=getUsers(),t=us.find(function(x){return x.user===u.user;});if(t)t.moderator=!t.moderator;saveUsers(us);render();});
-    on("dp-"+u.user,function(){var us=getUsers(),t=us.find(function(x){return x.user===u.user;});if(t)t.direct=!t.direct;saveUsers(us);render();});
-    on("du-"+u.user,function(){saveUsers(getUsers().filter(function(x){return x.user!==u.user;}));render();});
-  });
-
-  // Messages
-  getMsgs().forEach(function(m){
-    on("mr-"+m.id,function(){openMsg=(openMsg===m.id?null:m.id);render();});
-    on("md-"+m.id,function(){doDeleteMsg(m.id);});
-  });
-  on("do-send",function(){
-    var subj=(document.getElementById("ms-subj").value||"").trim();
-    var txt=(document.getElementById("ms-body").value||"").trim();
-    if(!txt)return;
-    doSendMsg(subj,txt);
-  });
-
-  // Comments
-  getCmts().forEach(function(c){
-    on("cr-"+c.id,function(){openCmt[c.id]=!openCmt[c.id];render();});
-    on("cd-"+c.id,function(){doDeleteCmt(c.id);});
-  });
-  on("c-sub",function(){
-    var inp=document.getElementById("c-inp"),btn=document.getElementById("c-sub");
-    if(!inp||!btn)return;
-    var txt=inp.value.trim(),aid=parseInt(btn.getAttribute("data-aid"));
-    if(!txt)return;
-    doAddComment(aid,txt);
-  });
-
-  // Article actions
-  on("art-like",function(){var b=document.getElementById("art-like");if(b&&loggedIn){doToggleLike(parseInt(b.getAttribute("data-id")));}else if(!loggedIn){showLogin=true;loginErr="";render();}});
-  on("art-bm",function(){var b=document.getElementById("art-bm");if(b)toggleBm(parseInt(b.getAttribute("data-id")));});
-  on("art-edit",function(){var b=document.getElementById("art-edit");if(b){editId=parseInt(b.getAttribute("data-id"));showEditor=true;page="front";render();}});
-  on("art-del",function(){var b=document.getElementById("art-del");if(b)confirmP={type:"article",id:parseInt(b.getAttribute("data-id")),back:true};render();});
-
-  document.querySelectorAll("[data-like]").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();if(loggedIn)doToggleLike(parseInt(b.getAttribute("data-like")));else{showLogin=true;loginErr="";render();}});});
-  document.querySelectorAll("[data-bm]").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();toggleBm(parseInt(b.getAttribute("data-bm")));});});
-  document.querySelectorAll("[data-edit]").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();editId=parseInt(b.getAttribute("data-edit"));showEditor=true;render();});});
-  document.querySelectorAll("[data-del]").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();confirmP={type:"article",id:parseInt(b.getAttribute("data-del")),back:false};render();});});
-  document.querySelectorAll("[data-open]").forEach(function(el){el.addEventListener("click",function(e){if(e.target.closest("[data-del]")||e.target.closest("[data-bm]")||e.target.closest("[data-edit]")||e.target.closest("[data-like]"))return;var id=parseInt(el.getAttribute("data-open"));page="article";openId=id;trackView(id);render();});});
-  document.querySelectorAll("[id^='bmo-']").forEach(function(el){el.addEventListener("click",function(e){if(e.target.closest("[id^='bmd-']"))return;var id=parseInt(el.id.replace("bmo-",""));showBm=false;page="article";openId=id;trackView(id);render();});});
-  document.querySelectorAll("[id^='bmd-']").forEach(function(b){b.addEventListener("click",function(e){e.stopPropagation();var id=parseInt(b.id.replace("bmd-",""));var bms=getBm(),i=bms.indexOf(id);if(i!==-1)bms.splice(i,1);saveBm(bms);render();});});
-  document.querySelectorAll("[id^='pb-']").forEach(function(el){el.addEventListener("click",function(){var id=parseInt(el.id.replace("pb-",""));showProf=false;page="article";openId=id;trackView(id);render();});});
-  document.querySelectorAll("[id^='pc-']").forEach(function(el){el.addEventListener("click",function(){var aid=parseInt(el.id.replace("pc-",""));showProf=false;page="article";openId=aid;trackView(aid);render();});});
-  document.querySelectorAll("[id^='ri-']").forEach(function(el){el.addEventListener("click",function(){var id=parseInt(el.id.replace("ri-",""));page="article";openId=id;trackView(id);render();});});
-
-  on("mlogin",function(){showLogin=true;loginErr="";render();});
-  on("ll",function(){showLogin=true;loginErr="";render();});
-  on("nameplate",function(){page="front";render();});
-  var atrig=document.getElementById("atrig");if(atrig)atrig.addEventListener("click",function(){tapN++;clearTimeout(tapT);if(tapN>=5){tapN=0;showLogin=true;loginErr="";render();}else tapT=setTimeout(function(){tapN=0;},2000);});
-  on("back-btn",function(){page="front";render();});
-  on("add-btn",function(){showEditor=!showEditor;if(!showEditor){editId=null;pendImages=[];}render();});
-  on("cancel-ed",function(){showEditor=false;editId=null;pendImages=[];render();});
-  on("pub-btn",function(){doPublish(false);});
-  on("pub-direct",function(){doPublish(true);});
-}
-
-// ===== SUPABASE TOIMINNOT =====
-function doLogin(){
-  var uEl=document.getElementById("lu"),pEl=document.getElementById("lp");
-  if(!uEl||!pEl)return;
-  var u=uEl.value.trim(),p=pEl.value;
-  if(u===AU&&p===AP){showLogin=false;admin=true;loggedIn=true;cu=u;render();return;}
-  var found=getUsers().find(function(x){return x.user===u&&x.pass===p;});
-  if(found){showLogin=false;loggedIn=true;cu=u;loginErr="";render();return;}
-  loginErr=T("loginErr");render();
-}
-
-function doRegister(){
-  var uEl=document.getElementById("ru"),pEl=document.getElementById("rp"),p2El=document.getElementById("rp2");
-  if(!uEl||!pEl||!p2El)return;
-  var u=uEl.value.trim(),p=pEl.value,p2=p2El.value;
-  if(!u||u.length<3){regErr="Käyttäjätunnus liian lyhyt (väh. 3 merkkiä).";render();return;}
-  if(u===AU){regErr="Tämä tunnus on varattu.";render();return;}
-  if(p.length<6){regErr="Salasana liian lyhyt (väh. 6 merkkiä).";render();return;}
-  if(p!==p2){regErr="Salasanat eivät täsmää.";render();return;}
-  var users=getUsers();
-  if(users.find(function(x){return x.user===u;})){regErr="Tunnus on jo käytössä.";render();return;}
-  var newUser={user:u,pass:p,moderator:false,direct:false,date:todayFI()};
-  users.push(newUser);
-  sb.from("users").insert(newUser).then(function(){});
-  gUsers=users;
-  showReg=false;showLogin=true;loginErr="";
-  showNotif("Tunnus luotu! Kirjaudu sisään.");render();
-}
-
-// Lue kuvakenttien arvot ennen julkaisua
-function collectImages(){
-  var imgs=[];
-  pendImages.forEach(function(img,i){
-    var fi=document.getElementById("img-file-"+i);
-    var ci=document.getElementById("img-cap-"+i);
-    var file=(fi?fi.value:img.file||"").trim();
-    var cap=(ci?ci.value:img.caption||"").trim();
-    if(file) imgs.push({file:file,caption:cap});
-  });
-  return imgs;
-}
-
-async function doPublish(direct){
-  var title=(document.getElementById("et").value||"").trim();
-  var body=(document.getElementById("eb").value||"").trim();
-  if(!title){errMsg="Kirjoita otsikko.";render();return;}
-  if(!body){errMsg="Kirjoita teksti.";render();return;}
-  var media=collectImages();
-
-  if(editId){
-    var idx=articles.findIndex(function(a){return a.id===editId;});
-    if(idx!==-1){
-      var upd={title:title,author:(document.getElementById("ea").value||"").trim(),sec:(document.getElementById("es").value||""),col:document.getElementById("ec").value,body:body};
-      if(media.length)upd.media=JSON.stringify((articles[idx].media||[]).concat(media));
-      await sb.from("articles").update(upd).eq("id",editId);
-      Object.assign(articles[idx],upd);
-      if(upd.media)articles[idx].media=JSON.parse(upd.media);
-    }
-    showEditor=false;editId=null;pendImages=[];showNotif("Artikkeli päivitetty!");render();return;
-  }
-
-  var art={title:title,author:(document.getElementById("ea").value||"").trim(),sec:(document.getElementById("es").value||""),col:document.getElementById("ec").value,body:body,date:todayFI(),media:JSON.stringify(media),likes:0};
-
-  if(admin||direct){
-    var res=await sb.from("articles").insert(art).select().single();
-    if(res.error){errMsg="Julkaisu epäonnistui.";render();return;}
-    var inserted=res.data;
-    inserted.media=media;
-    articles.push(inserted);
-    showEditor=false;pendImages=[];page="article";openId=inserted.id;trackView(inserted.id);render();
-  } else {
-    var pArt=Object.assign({},art,{submitted_by:cu});
-    await sb.from("pending").insert(pArt);
-    gPending.push(Object.assign({},art,{id:Date.now(),author:art.author,media:media}));
-    showEditor=false;pendImages=[];showNotif(T("approved"));render();
-  }
-}
-
-async function doApprove(a){
-  var res=await sb.from("articles").insert({title:a.title,author:a.author,sec:a.sec,col:a.col||"center",body:a.body,date:a.date,media:JSON.stringify(a.media||[]),likes:0}).select().single();
-  if(res.data){a.id=res.data.id;articles.push(a);}
-  await sb.from("pending").delete().eq("id",a.id);
-  gPending=gPending.filter(function(x){return x.id!==a.id;});
   render();
 }
 
-async function doReject(id){
-  await sb.from("pending").delete().eq("id",id);
-  gPending=gPending.filter(function(x){return x.id!==id;});
-  render();
-}
-
-async function doDeleteArticle(id,goBack){
-  await sb.from("articles").delete().eq("id",id);
-  articles=articles.filter(function(a){return a.id!==id;});
-  if(goBack)page="front";
-  render();
-}
-
-async function doDeleteMsg(id){
-  await sb.from("messages").delete().eq("id",id);
-  gMsgs=gMsgs.filter(function(x){return x.id!==id;});
-  if(openMsg===id)openMsg=null;
-  render();
-}
-
-async function doSendMsg(subj,txt){
-  var msg={from_user:cu,subject:subj||"(ei aihetta)",body:txt,created_at:new Date().toISOString()};
-  var res=await sb.from("messages").insert(msg).select().single();
-  if(res.data){
-    gMsgs.unshift({id:res.data.id,from:cu,subject:subj,text:txt,date:todayFI()});
+// ===== LOGIN =====
+function login(u,p){
+  if(u===AU && p===AP){
+    admin=true; loggedIn=true; cu=u;
+    showLogin=false;
+    render();
+    return;
   }
-  showSend=false;showNotif("Viesti lähetetty!");render();
-}
 
-async function doAddComment(aid,txt){
-  var cmt={article_id:aid,author:cu,body:txt,created_at:new Date().toISOString()};
-  var res=await sb.from("comments").insert(cmt).select().single();
-  if(res.data){
-    gCmts.push({id:res.data.id,artId:aid,author:cu,text:txt,date:todayFI()});
-  }
+  const f=users.find(x=>x.user===u && x.pass===p);
+  if(f){
+    loggedIn=true; cu=u;
+    showLogin=false;
+  } else errMsg="Väärä kirjautuminen";
+
   render();
 }
 
-async function doDeleteCmt(id){
-  await sb.from("comments").delete().eq("id",id);
-  gCmts=gCmts.filter(function(x){return x.id!==id;});
-  delete openCmt[id];
-  render();
+// ===== MEDIA =====
+function collectMedia(){
+  const rows=document.querySelectorAll(".media-row");
+  return [...rows].map(r=>({
+    file:r.querySelector(".mf").value.trim(),
+    caption:r.querySelector(".mc").value.trim()
+  })).filter(m=>m.file);
 }
 
-function doToggleLike(id){
-  toggleLike(id);
-  var a=articles.find(function(x){return x.id===id;});
-  if(a){
-    if(isLiked(id))a.likes=(a.likes||0)+1;
-    else a.likes=Math.max(0,(a.likes||1)-1);
-    sb.from("articles").update({likes:a.likes}).eq("id",id).then(function(){});
-  }
-}
+// ===== PUBLISH =====
+async function publish(){
+  const title=et.value.trim();
+  const body=eb.value.trim();
+  if(!title||!body) return errMsg="Otsikko ja teksti pakollisia",render();
 
-// ===== VIDEOT =====
-async function doAddVideo(){
-  var vf=document.getElementById("vf"),vt=document.getElementById("vt");
-  if(!vf)return;
-  var file=(vf.value||"").trim();
-  var title=(vt?vt.value||"":"").trim()||file;
-  if(!file){showNotif("Kirjoita tiedostonimi.");return;}
-  var v={file:file,title:title,date:todayFI()};
-  var newVideos=gVideos.concat([v]);
-  await saveVideos(newVideos);
-  showVideoEditor=false;
-  showNotif("Video lisätty!");
-  render();
-}
+  const media=collectMedia();
 
-async function doDeleteVideo(idx){
-  var newVideos=gVideos.filter(function(_,i){return i!==idx;});
-  await saveVideos(newVideos);
-  render();
-}
+  const data={
+    title,
+    body,
+    author:ea.value,
+    sec:es.value,
+    col:ec.value,
+    date:today(),
+    media,
+    likes:0
+  };
 
-// ===== KÄYNNISTYS =====
-try{var st=localStorage.getItem("mu_theme");if(st)applyTheme(st);}catch(e){}
-render();
-
-async function initApp(){
   try{
-    var b=document.getElementById("lbi");
-    if(b)setTimeout(function(){b.classList.add("go");},30);
 
-    var results=await Promise.all([
-      sb.from("articles").select("*").order("id",{ascending:true}),
-      sb.from("users").select("*"),
-      sb.from("pending").select("*").order("id",{ascending:true}),
-      sb.from("messages").select("*").order("created_at",{ascending:false}),
-      sb.from("comments").select("*").order("id",{ascending:true}),
-      sb.from("site_data").select("*").eq("id","views").maybeSingle(),
-      sb.from("site_data").select("*").eq("id","likes_"+(cu||"guest")).maybeSingle(),
-      sb.from("site_data").select("*").eq("id","videos").maybeSingle()
-    ]);
+    if(editId){
+      const {error}=await sb.from("articles").update(data).eq("id",editId);
+      if(error) return err(error);
 
-    if(results[0].data)articles=results[0].data.map(function(r){var m=[];try{if(r.media)m=JSON.parse(r.media);}catch(e){}return Object.assign({},r,{sec:r.sec||"",col:r.col||"center",media:m});});
-    if(results[1].data)gUsers=results[1].data;
-    if(results[2].data)gPending=results[2].data.map(function(r){var m=[];try{if(r.media)m=JSON.parse(r.media);}catch(e){}return Object.assign({},r,{sec:r.sec||"",col:r.col||"center",media:m});});
-    if(results[3].data)gMsgs=results[3].data.map(function(m){return {id:m.id,from:m.from_user||"",subject:m.subject||"",text:m.body||"",date:m.created_at?m.created_at.substring(0,10):""}; });
-    if(results[4].data)gCmts=results[4].data.map(function(c){return {id:c.id,artId:c.article_id,author:c.author||"",text:c.body||"",date:c.created_at?c.created_at.substring(0,10):""};});
-    if(results[5].data&&results[5].data.data)gViews=results[5].data.data;
-    if(results[6].data&&results[6].data.data)gLikes=results[6].data.data;
-    if(results[7].data&&results[7].data.data)gVideos=results[7].data.data;
+      const i=articles.findIndex(a=>a.id===editId);
+      if(i>-1) articles[i]={...articles[i],...data};
 
-    dataLoaded=true;
-    render();
-  }catch(e){
-    dataLoaded=true;
-    render();
-  }
+    } else if(admin){
 
-  setTimeout(function(){
-    var ls=document.getElementById("ls");
-    if(ls){ls.classList.add("out");setTimeout(function(){ls.style.display="none";},500);}
-  },1500);
+      const {data:ins,error}=await sb.from("articles").insert(data).select().single();
+      if(error) return err(error);
+      articles.push(ins);
 
-  // Autorefresh 30s
-  setInterval(async function(){
-    var res=await sb.from("articles").select("*").order("id",{ascending:true});
-    if(res.data){
-      var mapped=res.data.map(function(r){var m=[];try{if(r.media)m=JSON.parse(r.media);}catch(e){}return Object.assign({},r,{sec:r.sec||"",col:r.col||"center",media:m});});
-      if(JSON.stringify(mapped)!==JSON.stringify(articles)){
-        articles=mapped;showNotif("Päivitetty \u21bb");render();
-      }
+    } else {
+
+      const {error}=await sb.from("pending").insert(data);
+      if(error) return err(error);
+      pending.push(data);
     }
-  },30000);
+
+    showEditor=false;
+    editId=null;
+    render();
+
+  }catch(e){err(e);}
 }
 
-initApp();
-</script>
+// ===== APPROVE =====
+async function approve(a){
+  const {data,error}=await sb.from("articles").insert(a).select().single();
+  if(error) return err(error);
+
+  articles.push(data);
+  await sb.from("pending").delete().eq("id",a.id);
+  pending=pending.filter(x=>x.id!==a.id);
+
+  render();
+}
+
+// ===== DELETE =====
+async function delArticle(id){
+  await sb.from("articles").delete().eq("id",id);
+  articles=articles.filter(a=>a.id!==id);
+  render();
+}
+
+// ===== VIEWS =====
+function view(id){
+  views[id]=(views[id]||0)+1;
+}
+
+// ===== RENDER (MINIMAL FIXED CORE) =====
+function render(){
+  const app=document.getElementById("app");
+
+  app.innerHTML=`
+    <div style="padding:10px;color:red">${errMsg||""}</div>
+
+    <button onclick="showEditor=!showEditor;render()">+ Uutinen</button>
+
+    ${showEditor?`
+      <div>
+        <input id="et" placeholder="otsikko">
+        <input id="ea" placeholder="tekijä">
+        <input id="es" placeholder="osasto">
+        <textarea id="eb"></textarea>
+
+        <div id="media">
+          <div class="media-row">
+            <input class="mf" placeholder="file.jpg">
+            <input class="mc" placeholder="caption">
+          </div>
+        </div>
+
+        <button onclick="publish()">Julkaise</button>
+      </div>
+    `:""}
+
+    <hr/>
+
+    ${articles.map(a=>`
+      <div onclick="openId=${a.id};view(${a.id});render()">
+        <h3>${a.title}</h3>
+        <p>${a.body.slice(0,120)}...</p>
+        <button onclick="event.stopPropagation();delArticle(${a.id})">poista</button>
+      </div>
+    `).join("")}
+
+    <hr/>
+
+    ${page==="article" && openId ? `
+      <div>
+        ${(()=> {
+          const a=articles.find(x=>x.id===openId);
+          if(!a) return "ei löydy";
+          return `
+            <h1>${a.title}</h1>
+            <p>${a.body}</p>
+          `;
+        })()}
+      </div>
+    `:""}
+  `;
+}
+
+// ===== REALTIME (FIX) =====
+sb.channel('articles')
+  .on('postgres_changes',
+    {event:'INSERT',schema:'public',table:'articles'},
+    payload=>{
+      articles.push({...payload.new,media:safeJSON(payload.new.media)});
+      render();
+    }
+  )
+  .subscribe();
+
+// ===== INIT =====
+loadAll();
+window.login=login;
+window.publish=publish;
+window.render=render;
+window.delArticle=delArticle;
 </body>
 </html>
