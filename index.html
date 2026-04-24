@@ -561,7 +561,7 @@ function render(){
   // MOD PANEL
   var modHtml="";
   if(showMod&&isA){
-    var allU=getUsers().filter(function(u){return u.user!==AU;});
+    var allU=getUsers().filter(function(u){return u.user!==cu;});
     var filtU=uSearch?allU.filter(function(u){return u.user.toLowerCase().includes(uSearch.toLowerCase());}):allU;
     var ur=filtU.map(function(u){return "<div class='urow'><span>"+esc(u.user)+(u.direct?"<span class='ubadge'>Suora</span>":"")+"</span><div style='display:flex;gap:.3rem;flex-wrap:wrap'><button id='mod-"+esc(u.user)+"' class='ub"+(u.moderator?" red":"")+"'>"+(u.moderator?"Poista mod":"Mod")+"</button><button id='dp-"+esc(u.user)+"' class='ub"+(u.direct?" green":" dim")+"'>"+(u.direct?"\u2713 Suorajulkaisu":"Suorajulkaisu")+"</button><button id='du-"+esc(u.user)+"' class='ub outline'>Poista</button></div></div>";}).join("");
     var themeH="<div style='margin-top:1.2rem;padding-top:.8rem;border-top:1px solid #c8bba0'><p style='font-family:\"Bebas Neue\",sans-serif;font-size:.68rem;letter-spacing:.15em;color:var(--muted);margin-bottom:.5rem'>SIVUN VÄRI</p><div style='display:flex;gap:.5rem'><button class='theme-btn tbr"+(siteTheme==="red"?" act":"")+"' id='th-red'>\ud83d\udd34 Punainen</button><button class='theme-btn tbb"+(siteTheme==="blue"?" act":"")+"' id='th-blue'>\ud83d\udd35 Sininen</button><button class='theme-btn tbg"+(siteTheme==="green"?" act":"")+"' id='th-green'>\ud83d\udfe2 Vihreä</button></div></div>";
@@ -772,7 +772,7 @@ function attachEvents(){
   });
 
   // Users
-  getUsers().filter(function(u){return u.user!==AU;}).forEach(function(u){
+  getUsers().filter(function(u){return u.user!==cu;}).forEach(function(u){
     on("mod-"+u.user,function(){var us=getUsers(),t=us.find(function(x){return x.user===u.user;});if(t)t.moderator=!t.moderator;saveUsers(us);render();});
     on("dp-"+u.user,function(){var us=getUsers(),t=us.find(function(x){return x.user===u.user;});if(t)t.direct=!t.direct;saveUsers(us);render();});
     on("du-"+u.user,function(){saveUsers(getUsers().filter(function(x){return x.user!==u.user;}));render();});
@@ -863,7 +863,6 @@ function doRegister(){
   if(!uEl||!pEl||!p2El)return;
   var u=uEl.value.trim(),p=pEl.value,p2=p2El.value;
   if(!u||u.length<3){regErr="Käyttäjätunnus liian lyhyt (väh. 3 merkkiä).";render();return;}
-  if(u===AU){regErr="Tämä tunnus on varattu.";render();return;}
   if(p.length<6){regErr="Salasana liian lyhyt (väh. 6 merkkiä).";render();return;}
   if(p!==p2){regErr="Salasanat eivät täsmää.";render();return;}
   var users=getUsers();
