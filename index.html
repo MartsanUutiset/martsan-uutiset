@@ -439,6 +439,18 @@ function buildThumb(media){
        +(cap?"<p class='card-caption'>"+esc(cap)+"</p>":"");
 }
 
+async function reloadArticles(){
+  var res=await sb.from("articles").select("*").order("id",{ascending:true});
+  if(res.error)return res;
+  articles=(res.data||[]).map(function(r){
+    var m=[];
+    try{if(r.media)m=JSON.parse(r.media);}catch(e){}
+    return Object.assign({},r,{sec:r.sec||"",col:r.col||"center",media:m});
+  });
+  return res;
+}
+
+
 // ===== KUVARIVIT EDITORISSA =====
 function renderImageRows(){
   var rows = pendImages.map(function(img,i){
@@ -554,7 +566,7 @@ function render(){
 
   // SEND MSG
   var sendHtml="";
-  if(showSend&&loggedIn&&!cMsg){
+  if(showSend&&loggedIn){
     sendHtml="<div class='modal-bg'><div class='send-modal'><h2>"+T("msg")+"</h2><p>Yksityinen viesti toimitukselle</p><label>Aihe</label><input id='ms-subj' placeholder='Aihe\u2026'><label>Viesti</label><textarea id='ms-body' placeholder='Kirjoita viesti\u2026'></textarea><div class='modal-btns'><button class='btn-p' id='do-send'>"+T("send")+"</button><button class='btn-s' id='cancel-send'>"+T("cancel")+"</button></div></div></div>";
   }
 
@@ -602,7 +614,7 @@ function render(){
 
   // TOP BAR
   var langMenu="<div class='lang-wrap'><button class='lang-btn' id='lang-btn'>\ud83c\udf10 "+lang.toUpperCase()+"</button><div class='lang-dropdown"+(showLang?" open":"")+"'><button class='lang-option' id='lang-fi'>\ud83c\uddeb\ud83c\uddee Suomi</button><button class='lang-option' id='lang-en'>\ud83c\uddec\ud83c\udde7 English</button><button class='lang-option' id='lang-sv'>\ud83c\uddf8\ud83c\uddea Svenska</button></div></div>";
-  var sendBtn=(!cMsg&&loggedIn)?"<button class='tbtn' id='open-send'>\u2709 "+T("msg")+"</button>":"";
+  var sendBtn=loggedIn?"<button class='tbtn' id='open-send'>✉ "+T("msg")+"</button>":"";
   var bmBtn=loggedIn?"<button class='tbtn' id='open-bm'>\u2605 "+T("bm")+"</button>":"";
   var profBtn=loggedIn?"<button class='tbtn' id='open-prof'>\ud83d\udce4 "+T("prof")+"</button>":"";
   var topBar="<div class='top-bar'><div class='dl-wrap'><button class='dl-main-btn' id='dl-btn'>\u2b07 "+T("install")+" <span class='dl-arrow'>\u25bc</span></button><div class='dl-dropdown' id='dl-dd'><button id='dl-a'>Android</button><button id='dl-w'>Windows</button><button id='dl-m'>Mac</button></div></div>"+langMenu+sendBtn+bmBtn+profBtn+"</div>";
@@ -909,26 +921,30 @@ async function doPublish(direct){
 
   var art={title:title,author:(document.getElementById("ea").value||"").trim(),sec:(document.getElementById("es").value||""),col:document.getElementById("ec").value,body:body,date:todayFI(),media:JSON.stringify(media),likes:0};
 
-  if(admin||direct){
-    var res=await sb.from("articles").insert(art).select().single();
-    if(res.error){errMsg="Julkaisu epäonnistui.";render();return;}
-    var inserted=res.data;
-    inserted.media=media;
-    articles.push(inserted);
-    showEditor=false;pendImages=[];page="article";openId=inserted.id;trackView(inserted.id);render();
-  } else {
-    var pArt=Object.assign({},art,{submitted_by:cu});
-    await sb.from("pending").insert(pArt);
-    gPending.push(Object.assign({},art,{id:Date.now(),author:art.author,media:media}));
-    showEditor=false;pendImages=[];showNotif(T("approved"));render();
-  }
+ if(admin||direct){
+  var res=await sb.from("articles").insert(art);
+  if(res.error){errMsg="Julkaisu epäonnistui: "+(res.error.message||"tuntematon virhe");render();return;}
+  var reloadRes=await reloadArticles();
+  if(reloadRes.error){errMsg="Julkaistu, mutta listan päivitys epäonnistui: "+(reloadRes.error.message||"tuntematon virhe");render();return;}
+  var inserted=articles.length?articles[articles.length-1]:null;
+  showEditor=false;pendMedia=[];page=inserted?"article":"front";openId=inserted?inserted.id:null;
+  if(inserted)trackView(inserted.id);
+  render();
+} else {
+  var pArt=Object.assign({},art,{submitted_by:cu});
+  var pendingRes=await sb.from("pending").insert(pArt);
+  if(pendingRes.error){errMsg="Lähetys epäonnistui: "+(pendingRes.error.message||"tuntematon virhe");render();return;}
+  gPending.push(Object.assign({},art,{id:Date.now(),author:art.author,media:media}));
+  showEditor=false;pendMedia=[];showNotif(T("approved"));render();
 }
 
 async function doApprove(a){
-  var res=await sb.from("articles").insert({title:a.title,author:a.author,sec:a.sec,col:a.col||"center",body:a.body,date:a.date,media:JSON.stringify(a.media||[]),likes:0}).select().single();
-  if(res.data){a.id=res.data.id;articles.push(a);}
-  await sb.from("pending").delete().eq("id",a.id);
-  gPending=gPending.filter(function(x){return x.id!==a.id;});
+  var originalId = a.id;
+  var res=await sb.from("articles").insert({title:a.title,author:a.author,sec:a.sec,col:a.col||"center",body:a.body,date:a.date,media:JSON.stringify(a.media||[]),likes:0});
+  if(res.error){errMsg="Hyväksyntä epäonnistui: "+(res.error.message||"tuntematon virhe");render();return;}
+  await reloadArticles();
+  await sb.from("pending").delete().eq("id",originalId);
+  gPending=gPending.filter(function(x){return x.id!==originalId;});
   render();
 }
 
