@@ -839,7 +839,7 @@ async function doLogin(){
   if(!u||!p){loginErr=T("loginErr");render();return;}
 
   var res=await sb.from("users")
-    .select("user, moderator, direct, superadmin, date")
+    .select("user, moderator, direct, admin, date")
     .eq("user",u)
     .eq("pass",p)
     .maybeSingle();
@@ -848,7 +848,7 @@ async function doLogin(){
     showLogin=false;
     loggedIn=true;
     cu=u;
-    admin=!!res.data.superadmin;
+    admin=!!res.data.admin;
     loginErr="";
     render();
     return;
